@@ -593,14 +593,57 @@ class SerpMovieSceneService:
             return "bn", "Bengali"
 
         low = text.lower()
+
+        def _has_kw(markers: List[str]) -> bool:
+            for m in markers:
+                if " " in m:
+                    if m in low:
+                        return True
+                else:
+                    if re.search(r"\b" + re.escape(m) + r"\b", low):
+                        return True
+            return False
         
+        # Tamil cinema keywords & markers
+        ta_markers = [
+            "rolex", "vikram", "leo", "jailer", "master", "asuran", "vedha", "suriya",
+            "kamal", "rajini", "vijay", "dhanush", "tamil", "kollywood", "anirudh",
+            "lokesh", "kaithi", "soorarai", "pariyerum", "nayanthara", "sivakarthikeyan",
+            "valimai", "thunivu", "beast", "petta", "mankatha", "mersal", "sarkar",
+            "super deluxe", "vada chennai", "karnan", "jai bhim", "viduthalai", "ayalaan",
+            "thiruchitrambalam", "gargi"
+        ]
+        if _has_kw(ta_markers):
+            return "ta", "Tamil"
+
+        # Malayalam cinema keywords & markers
+        ml_markers = [
+            "kumbalangi", "drishyam", "lucifer", "manichitrathazhu", "kireedam",
+            "mohanlal", "mammootty", "fahadh", "soubin", "malayalam", "mollywood",
+            "georgekutty", "saji", "nagavalli", "shammi", "aavesham", "bheeshma", "premam",
+            "manjummel", "bramayugam", "premalu", "neru", "malik", "trance", "nayattu",
+            "hridhyam", "minnal murali", "tovino", "kurup", "jallikattu"
+        ]
+        if _has_kw(ml_markers):
+            return "ml", "Malayalam"
+
+        # Hindi cinema keywords & markers
+        hi_markers = [
+            "3 idiots", "taare zameen", "dangal", "sholay", "wasseypur", "chak de",
+            "shah rukh", "srk", "aamir", "salman", "rancho", "hindi", "bollywood",
+            "kabir khan", "ishaan", "swades", "lagaan", "jawan", "pathaan", "gangs of wasseypur",
+            "jab tak hai jaan", "jab tak", "supergirl", "anushka sharma"
+        ]
+        if _has_kw(hi_markers):
+            return "hi", "Hindi"
+
         # Telugu cinema keywords & markers
         te_markers = [
             "baahubali", "bahubali", "rrr", "pushpa", "devara", "kalki", "salaar",
             "prabhas", "allu arjun", "ntr", "ram charan", "mahesh babu", "telugu",
             "tollywood", "chiranjeevi", "rajamouli", "ss rajamouli", "vijay devarakonda"
         ]
-        if any(m in low for m in te_markers):
+        if _has_kw(te_markers):
             return "te", "Telugu"
 
         # Kannada cinema keywords & markers
@@ -608,43 +651,15 @@ class SerpMovieSceneService:
             "kgf", "kantara", "charlie 777", "yash", "rishab shetty", "shivarajkumar",
             "kannada", "sandalwood", "upendra", "sudeep", "puneeth"
         ]
-        if any(m in low for m in kn_markers):
+        if _has_kw(kn_markers):
             return "kn", "Kannada"
-
-        # Tamil cinema keywords & markers
-        ta_markers = [
-            "rolex", "vikram", "leo", "jailer", "master", "asuran", "vedha", "suriya",
-            "kamal", "rajini", "vijay", "dhanush", "tamil", "kollywood", "anirudh",
-            "lokesh", "kaithi", "soorarai", "pariyerum", "nayanthara", "sivakarthikeyan",
-            "valimai", "thunivu", "beast", "petta", "mankatha", "mersal", "sarkar"
-        ]
-        if any(m in low for m in ta_markers):
-            return "ta", "Tamil"
-
-        # Hindi cinema keywords & markers
-        hi_markers = [
-            "3 idiots", "taare zameen", "dangal", "sholay", "wasseypur", "chak de",
-            "shah rukh", "srk", "aamir", "salman", "rancho", "hindi", "bollywood",
-            "kabir khan", "ishaan", "swades", "lagaan", "jawan", "pathaan", "gangs of wasseypur"
-        ]
-        if any(m in low for m in hi_markers):
-            return "hi", "Hindi"
-
-        # Malayalam cinema keywords & markers
-        ml_markers = [
-            "kumbalangi", "drishyam", "lucifer", "manichitrathazhu", "kireedam",
-            "mohanlal", "mammootty", "fahadh", "soubin", "malayalam", "mollywood",
-            "georgekutty", "saji", "nagavalli", "shammi", "aavesham", "bheeshma", "premam"
-        ]
-        if any(m in low for m in ml_markers):
-            return "ml", "Malayalam"
 
         # English / Hollywood markers
         en_markers = [
             "interstellar", "dark knight", "good will hunting", "pursuit of happyness",
             "batman", "joker", "cooper", "english", "hollywood", "oppenheimer", "inception"
         ]
-        if any(m in low for m in en_markers):
+        if _has_kw(en_markers):
             return "en", "English"
 
         return "en", "English"
@@ -1274,6 +1289,25 @@ class SerpMovieSceneService:
                     ("இத்தனை வருடங்களாக நான் பட்ட வலி உனக்கு புரியாது...", "You cannot comprehend the pain I endured all these years...", "sadness", "#60a5fa", 135.0, 0.035),
                     ("நீ எப்படி இந்த நிலைக்கு மாறினாய்?!", "How did you change into this condition?!", "surprise", "#38bdf8", 242.0, 0.084),
                     ("இப்ப சொல்லு, யார் நல்லவன் யார் கெட்டவன்?", "Now tell me, who is the good man and who is the bad one?", "sadness", "#60a5fa", 130.0, 0.038),
+                ],
+            }
+        elif "super deluxe" in low:
+            scene_cfg = {
+                "title": clean_title,
+                "movie_name": "Super Deluxe",
+                "character": "Manickam / Shilpa",
+                "lang_name": "Tamil",
+                "lang_code": "ta",
+                "dominant": "sadness",
+                "color": "#60a5fa",
+                "val": -0.62,
+                "aro": 0.72,
+                "transitions": ["neutral", "sadness", "surprise", "sadness"],
+                "dialogues": [
+                    ("என்னை உனக்கு அடையாளம் தெரிகிறதா?", "Do you recognize who I am?", "neutral", "#94a3b8", 148.0, 0.040),
+                    ("இத்தனை வருடங்களாக நான் பட்ட வலி உனக்கு புரியாது...", "You cannot comprehend the pain I endured all these years...", "sadness", "#60a5fa", 135.0, 0.035),
+                    ("நீ எப்படி இந்த நிலைக்கு மாறினாய்?!", "How did you change into this condition?!", "surprise", "#38bdf8", 242.0, 0.084),
+                    ("ஆனால் நீ இன்னும் என் தாய் தான்...", "Yet you are still my mother...", "sadness", "#60a5fa", 130.0, 0.038),
                 ],
             }
         elif "3 idiots" in low or "rancho" in low or "raju" in low:

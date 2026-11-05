@@ -54,3 +54,4 @@ def test_groq_service_transcribe_missing_file_safe():
     """Verify transcribe_audio safely returns None for non-existent files without crashing."""
     res = GroqService.transcribe_audio("non_existent_audio_file_123456.wav")
     assert res is None
+

@@ -53,7 +53,7 @@ class GroqService:
             if api_key:
                 try:
                     from groq import Groq
-                    cls._client = Groq(api_key=api_key)
+                    cls._client = Groq(api_key=api_key, max_retries=0, timeout=5.0)
                     logger.info("Groq Cloud LPU engine initialized successfully.")
                 except Exception as e:
                     logger.warning(f"Failed to initialize Groq client: {e}")
@@ -235,3 +235,4 @@ Explain how linguistic semantics, acoustic pitch dynamics, and facial Action Uni
             return res.choices[0].message.content.strip().replace("\n", " ")
         except Exception:
             return f"Neural multimodal attention prioritized linguistic semantics ({text_pct:.0f}%) and acoustic prosody ({audio_pct:.0f}%) with facial Action Units confirming {predicted_emotion.upper()}."
+
