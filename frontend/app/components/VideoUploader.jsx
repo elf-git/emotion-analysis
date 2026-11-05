@@ -314,13 +314,24 @@ export default function VideoUploader({
             <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
               Spoken Language
             </label>
-            <select className="cinema-select" value={language} onChange={(e) => setLanguage(e.target.value)}>
-              <option value="auto">Auto-Detect (Faster-Whisper)</option>
-              <option value="en">English (MELD Benchmark)</option>
-              <option value="hi">Hindi (हिन्दी / Devanagari)</option>
-              <option value="ml">Malayalam (മലയാളം)</option>
-              <option value="ta">Tamil (தமிழ்)</option>
-            </select>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                height: '42px',
+                padding: '0 12px',
+                background: '#09090b',
+                border: '1px solid #27272a',
+                borderRadius: 'var(--radius-md)',
+                color: '#f4f4f5',
+                fontSize: '0.80rem',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
+              <span>Auto-Detect (Groq Whisper Large V3)</span>
+            </div>
           </div>
 
           <div>

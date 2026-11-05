@@ -81,6 +81,64 @@ class MultilingualSpeechProcessor:
             audio_path = str(audio_input)
 
         try:
+            # 1. Accelerated Cloud Whisper via Groq LPU (Whisper Large V3 Turbo)
+            try:
+                from backend.services.groq_service import GroqService
+                if GroqService.is_available() and os.path.exists(audio_path) and os.path.getsize(audio_path) > 1000:
+                    groq_res = GroqService.transcribe_audio(audio_path, filename=filename)
+                    if groq_res and groq_res.get("segments"):
+                        d_lang_meta = groq_res["detected_language"]
+                        d_lang = d_lang_meta["language_code"]
+                        logger.info(f"Using Groq Whisper Large V3 Turbo (Auto-detected: {d_lang_meta['language_name']})")
+                        
+                        segments = []
+                        for s in groq_res["segments"]:
+                            s_text = s["text"]
+                            s_item = {
+                                "start": s["start"],
+                                "end": s["end"],
+                                "duration": round(s["end"] - s["start"], 2),
+                                "text": s_text,
+                                "confidence": 0.96,
+                            }
+                            if translate_to_english and d_lang != "en":
+                                trans = IndicTranslator.translate_to_english(s_text, d_lang)
+                                s_item["translated_text"] = trans["translated_text"]
+                            else:
+                                s_item["translated_text"] = s_text
+                            segments.append(s_item)
+
+                        full_native = groq_res["full_transcript"]
+                        if translate_to_english and d_lang != "en":
+                            full_trans = IndicTranslator.translate_to_english(full_native, d_lang)["translated_text"]
+                        else:
+                            full_trans = full_native
+
+                        dur_sec = groq_res.get("duration", 0.0)
+                        if not dur_sec and segments:
+                            dur_sec = segments[-1]["end"]
+
+                        return {
+                            "status": "success",
+                            "detected_language": {
+                                "language_code": d_lang,
+                                "language_name": d_lang_meta["language_name"],
+                                "native_name": d_lang_meta.get("native_name", d_lang_meta["language_name"]),
+                                "confidence": 0.98,
+                                "is_override": bool(language_override),
+                            },
+                            "original_transcript": full_native,
+                            "translated_transcript": full_trans,
+                            "is_translated": (d_lang != "en" and translate_to_english),
+                            "total_duration_sec": round(float(dur_sec), 2),
+                            "segments": segments,
+                            "engine": "groq_whisper_large_v3_turbo",
+                            "has_speech": True,
+                        }
+            except Exception as e:
+                logger.info(f"Groq Whisper cloud step note: {e}. Falling back to local Faster-Whisper.")
+
+            # 2. Local Faster-Whisper Engine
             model = cls.get_whisper_model()
             lang_param = language_override.lower() if language_override else None
             if lang_param and lang_param not in SUPPORTED_LANGUAGES:

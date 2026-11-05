@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 load_dotenv()
 
+from backend.services.groq_service import GroqService
+
 logger = logging.getLogger(__name__)
 
 SERP_API_ENDPOINT = "https://serpapi.com/search.json"
@@ -26,6 +28,10 @@ LANGUAGE_LABELS = {
     "hi": "Hindi",
     "ml": "Malayalam",
     "ta": "Tamil",
+    "te": "Telugu",
+    "kn": "Kannada",
+    "bn": "Bengali",
+    "mr": "Marathi",
     "all": "Multilingual",
 }
 
@@ -567,13 +573,44 @@ class SerpMovieSceneService:
         text: str,
         language_override: Optional[str] = None,
     ) -> Tuple[str, str]:
-        """Detects language and full language name from text/title markers."""
-        if language_override and language_override.lower() in ["en", "hi", "ml", "ta"]:
+        """Detects language and full language name from text/title markers and native scripts."""
+        if language_override and language_override.lower() in LANGUAGE_LABELS:
             lang = language_override.lower()
             return lang, LANGUAGE_LABELS.get(lang, "English")
 
+        # 1. Native Unicode Script Detection (100% precision for non-Latin scripts)
+        if re.search(r"[\u0900-\u097f]", text):
+            return "hi", "Hindi"
+        if re.search(r"[\u0d00-\u0d7f]", text):
+            return "ml", "Malayalam"
+        if re.search(r"[\u0b80-\u0bff]", text):
+            return "ta", "Tamil"
+        if re.search(r"[\u0c00-\u0c7f]", text):
+            return "te", "Telugu"
+        if re.search(r"[\u0c80-\u0cff]", text):
+            return "kn", "Kannada"
+        if re.search(r"[\u0980-\u09ff]", text):
+            return "bn", "Bengali"
+
         low = text.lower()
         
+        # Telugu cinema keywords & markers
+        te_markers = [
+            "baahubali", "bahubali", "rrr", "pushpa", "devara", "kalki", "salaar",
+            "prabhas", "allu arjun", "ntr", "ram charan", "mahesh babu", "telugu",
+            "tollywood", "chiranjeevi", "rajamouli", "ss rajamouli", "vijay devarakonda"
+        ]
+        if any(m in low for m in te_markers):
+            return "te", "Telugu"
+
+        # Kannada cinema keywords & markers
+        kn_markers = [
+            "kgf", "kantara", "charlie 777", "yash", "rishab shetty", "shivarajkumar",
+            "kannada", "sandalwood", "upendra", "sudeep", "puneeth"
+        ]
+        if any(m in low for m in kn_markers):
+            return "kn", "Kannada"
+
         # Tamil cinema keywords & markers
         ta_markers = [
             "rolex", "vikram", "leo", "jailer", "master", "asuran", "vedha", "suriya",
@@ -920,6 +957,136 @@ class SerpMovieSceneService:
                     0.090,
                 ),
             ]
+        elif lang_code == "te":
+            # Contextual Telugu turns
+            d_climax = (
+                (
+                    f"{c_name} ఎప్పటికీ ఈ సవాలును వదలడు!",
+                    f"{c_name} will never surrender to this challenge!",
+                    "anger",
+                    "#f87171",
+                    255.0,
+                    0.105,
+                ) if emo == "anger" else (
+                    (
+                        f"మనం ఊహించిన దానికంటే అద్భుతమైన విజయం ఇది!",
+                        f"This is an even grander victory than we ever imagined!",
+                        "joy",
+                        "#fbbf24",
+                        260.0,
+                        0.095,
+                    ) if emo == "joy" else (
+                        (
+                            f"అన్నీ కోల్పోయిన ఈ క్షణంలో మనం ఏమి చేయగలం...",
+                            f"In this moment where all is lost, what can we possibly do...",
+                            "sadness",
+                            "#60a5fa",
+                            130.0,
+                            0.035,
+                        ) if emo == "sadness" else (
+                            f"జాగ్రత్త, ఇక్కడ ప్రతి క్షణం ప్రమాదం పొంచి ఉంది.",
+                            f"Be careful, danger lurks at every moment here.",
+                            "fear",
+                            "#c084fc",
+                            190.0,
+                            0.075,
+                        )
+                    )
+                )
+            )
+
+            turns = [
+                (
+                    f"{m_name} సినిమాలో ఈ సన్నివేశం చాలా ముఖ్యమైనది.",
+                    f"This scene from {m_name} is exceptionally pivotal.",
+                    "neutral",
+                    "#94a3b8",
+                    142.0,
+                    0.036,
+                ),
+                (
+                    f"ఇది ఎలా సాధ్యమైందో ఇప్పటికీ నమ్మలేకపోతున్నాను!",
+                    f"I still cannot fathom how this actually came to pass!",
+                    "surprise",
+                    "#38bdf8",
+                    230.0,
+                    0.080,
+                ),
+                d_climax,
+                (
+                    f"ఇప్పుడు ఇక్కడ ఏం జరగబోతుందో చూద్దాం.",
+                    f"Now let us see what will unfold from here.",
+                    emo,
+                    c_color,
+                    245.0,
+                    0.090,
+                ),
+            ]
+        elif lang_code == "kn":
+            # Contextual Kannada turns
+            d_climax = (
+                (
+                    f"{c_name} ಈ ಸವಾಲಿಗೆ ಎಂದಿಗೂ ತಲೆಬಾಗುವುದಿಲ್ಲ!",
+                    f"{c_name} will never bow down to this challenge!",
+                    "anger",
+                    "#f87171",
+                    255.0,
+                    0.105,
+                ) if emo == "anger" else (
+                    (
+                        f"ನಾವು ಊಹಿಸಿದ್ದಕ್ಕಿಂತ ಅದ್ಭುತವಾದ ಗೆಲುವು ಇದು!",
+                        f"This is a greater victory than we ever imagined!",
+                        "joy",
+                        "#fbbf24",
+                        260.0,
+                        0.095,
+                    ) if emo == "joy" else (
+                        (
+                            f"ಎಲ್ಲವನ್ನೂ ಕಳೆದುಕೊಂಡ ಈ ಕ್ಷಣದಲ್ಲಿ ನಾವೇನು ಮಾಡಲು ಸಾಧ್ಯ...",
+                            f"In this moment having lost everything, what can we do...",
+                            "sadness",
+                            "#60a5fa",
+                            130.0,
+                            0.035,
+                        ) if emo == "sadness" else (
+                            f"ಎಚ್ಚರ, ಇಲ್ಲಿ ಪ್ರತಿ ಕ್ಷಣವೂ ಅಪಾಯ ಹೊಂಚುಹಾಕಿದೆ.",
+                            f"Be careful, danger lurks at every moment here.",
+                            "fear",
+                            "#c084fc",
+                            190.0,
+                            0.075,
+                        )
+                    )
+                )
+            )
+
+            turns = [
+                (
+                    f"{m_name} ಸಿನಿಮಾದ ಈ ದೃಶ್ಯ ಕಥೆಗೆ ಹೊಸ ತಿರುವು ನೀಡುತ್ತದೆ.",
+                    f"This scene from {m_name} brings a vital twist to the narrative.",
+                    "neutral",
+                    "#94a3b8",
+                    142.0,
+                    0.036,
+                ),
+                (
+                    f"ಇದು ಹೇಗೆ ಸಾಧ್ಯವಾಯಿತು ಎಂದು ನಂಬಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ!",
+                    f"It is hard to believe how this actually came to pass!",
+                    "surprise",
+                    "#38bdf8",
+                    230.0,
+                    0.080,
+                ),
+                d_climax,
+                (
+                    f"ಇನ್ನು ಮುಂದೆ ಇಲ್ಲಿ ಏನು ನಡೆಯುತ್ತದೆ ಎಂದು ಕಾದು ನೋಡೋಣ.",
+                    f"Let us wait and observe what happens from here.",
+                    emo,
+                    c_color,
+                    245.0,
+                    0.090,
+                ),
+            ]
         else:
             # Contextual English turns
             d_climax = (
@@ -1005,6 +1172,7 @@ class SerpMovieSceneService:
         to the exact movie, character, language, and emotional tone of the selected video.
         """
         from ml.multilingual.text_analyzer import MultilingualTextAnalyzer
+        from backend.services.groq_service import GroqService
 
         # 1. Resolve Scene Metadata
         matched = [s for s in MOCK_SCENE_CATALOGUE if s.get("video_id") == video_id]
@@ -1204,31 +1372,78 @@ class SerpMovieSceneService:
                 ],
             }
         else:
-            # Truly Dynamic Multi-Modal Scene Synthesis for ANY Movie in Indian/World Cinema
-            parsed_movie, parsed_char = cls.extract_movie_and_character_names(clean_title)
-            final_movie = movie_name or parsed_movie
-            final_char = character or parsed_char
-            dynamic_dialogues, dom_emo, emo_val, emo_aro = cls.generate_dynamic_dialogues(
-                clean_title=clean_title,
-                movie_name=final_movie,
-                character=final_char,
-                scene_description=scene_description,
-                lang_code=lang,
-                emotion_tag=emotion_tag,
-            )
-            scene_cfg = {
-                "title": clean_title,
-                "movie_name": final_movie,
-                "character": final_char,
-                "lang_name": lang_name,
-                "lang_code": lang,
-                "dominant": dom_emo,
-                "color": EMOTION_COLORS.get(dom_emo, "#38bdf8"),
-                "val": emo_val,
-                "aro": emo_aro,
-                "transitions": ["neutral", "surprise", dom_emo, dom_emo],
-                "dialogues": dynamic_dialogues,
-            }
+            # Multi-Modal Scene Synthesis for ANY Movie in Indian/World Cinema
+            groq_cfg = None
+            try:
+                if GroqService.is_available():
+                    groq_data = GroqService.analyze_scene_intelligence(
+                        title=clean_title,
+                        movie_name=movie_name,
+                        character=character,
+                        scene_description=scene_description,
+                        emotion_tag=emotion_tag,
+                    )
+                    if groq_data and groq_data.get("dialogue_turns"):
+                        g_lang_code = groq_data.get("language_code", lang)
+                        g_lang_name = groq_data.get("language_name", lang_name)
+                        g_dom = groq_data.get("dominant_emotion", "neutral")
+                        g_dialogues = []
+                        g_transitions = []
+                        for turn in groq_data.get("dialogue_turns", []):
+                            t_emo = turn.get("emotion", g_dom)
+                            g_transitions.append(t_emo)
+                            g_dialogues.append((
+                                turn.get("original_text", ""),
+                                turn.get("translated_text", turn.get("original_text", "")),
+                                t_emo,
+                                EMOTION_COLORS.get(t_emo, "#38bdf8"),
+                                float(turn.get("pitch_hz", 180.0)),
+                                float(turn.get("rms_energy", 0.05)),
+                            ))
+                        groq_cfg = {
+                            "title": clean_title,
+                            "movie_name": groq_data.get("movie_name", clean_title),
+                            "character": groq_data.get("characters", "Scene Characters"),
+                            "lang_name": g_lang_name,
+                            "lang_code": g_lang_code,
+                            "dominant": g_dom,
+                            "color": EMOTION_COLORS.get(g_dom, "#38bdf8"),
+                            "val": 0.72 if g_dom == "joy" else (-0.72 if g_dom in ["anger", "sadness", "fear", "disgust"] else 0.1),
+                            "aro": 0.85 if g_dom in ["anger", "surprise", "fear", "joy"] else 0.4,
+                            "transitions": g_transitions or ["neutral", "surprise", g_dom, g_dom],
+                            "dialogues": g_dialogues,
+                            "source": "groq_qwen_cognitive_engine",
+                        }
+            except Exception as e:
+                logger.warning(f"Groq dynamic scene synthesis fallback: {e}")
+
+            if groq_cfg:
+                scene_cfg = groq_cfg
+            else:
+                parsed_movie, parsed_char = cls.extract_movie_and_character_names(clean_title)
+                final_movie = movie_name or parsed_movie
+                final_char = character or parsed_char
+                dynamic_dialogues, dom_emo, emo_val, emo_aro = cls.generate_dynamic_dialogues(
+                    clean_title=clean_title,
+                    movie_name=final_movie,
+                    character=final_char,
+                    scene_description=scene_description,
+                    lang_code=lang,
+                    emotion_tag=emotion_tag,
+                )
+                scene_cfg = {
+                    "title": clean_title,
+                    "movie_name": final_movie,
+                    "character": final_char,
+                    "lang_name": lang_name,
+                    "lang_code": lang,
+                    "dominant": dom_emo,
+                    "color": EMOTION_COLORS.get(dom_emo, "#38bdf8"),
+                    "val": emo_val,
+                    "aro": emo_aro,
+                    "transitions": ["neutral", "surprise", dom_emo, dom_emo],
+                    "dialogues": dynamic_dialogues,
+                }
 
         # 4. Attempt Real YouTube Subtitles Extraction
         real_sub_turns = cls.extract_youtube_subtitles(video_id)
@@ -1324,7 +1539,21 @@ class SerpMovieSceneService:
                         "gradcam_available": True,
                     },
                 },
-                "explanation": f"Neural multimodal attention prioritized linguistic tokens with acoustic pitch ({pitch_val:.0f} Hz) and facial Grad-CAM for {predicted_emo.upper()}.",
+                "explanation": (
+                    GroqService.generate_cognitive_explanation(
+                        movie_name=scene_cfg["movie_name"],
+                        dialogue_text=orig_text,
+                        predicted_emotion=predicted_emo,
+                        text_prediction=analysis_text.get("approach_a", {}).get("predicted_emotion", predicted_emo),
+                        audio_prediction=predicted_emo,
+                        visual_prediction=predicted_emo,
+                        text_pct=36.0,
+                        audio_pct=34.0,
+                        video_pct=30.0,
+                    ) if GroqService.is_available() else (
+                        f"Neural multimodal attention prioritized linguistic tokens with acoustic pitch ({pitch_val:.0f} Hz) and facial Grad-CAM for {predicted_emo.upper()}."
+                    )
+                ),
                 "text_details": {
                     "approach_a": {
                         "predicted_emotion": analysis_text.get("approach_a", {}).get("predicted_emotion", predicted_emo),

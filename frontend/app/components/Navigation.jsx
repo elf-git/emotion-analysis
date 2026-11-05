@@ -66,7 +66,7 @@ export default function Navigation({ activeScreen, setActiveScreen, apiHealth })
             DistilBERT + IndicTrans2
           </span>
           <span className="metric-badge">
-            Whisper + openSMILE
+            Groq Whisper Large V3 + openSMILE
           </span>
           <span className="metric-badge">
             ResNet-18 Grad-CAM
