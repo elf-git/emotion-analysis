@@ -1,0 +1,101 @@
+{
+  "model_name": "multimodal_fusion_emotion",
+  "feature_dim": 256,
+  "hidden_dim": 256,
+  "num_classes": 7,
+  "num_heads": 4,
+  "use_cross_attention": true,
+  "emotion_map": {
+    "neutral": 0,
+    "surprise": 1,
+    "fear": 2,
+    "sadness": 3,
+    "joy": 4,
+    "disgust": 5,
+    "anger": 6
+  },
+  "id_to_emotion": {
+    "0": "neutral",
+    "1": "surprise",
+    "2": "fear",
+    "3": "sadness",
+    "4": "joy",
+    "5": "disgust",
+    "6": "anger"
+  },
+  "best_val_f1_weighted": 0.8545845986251249,
+  "ablation_results": [
+    {
+      "Configuration": "Text (T)",
+      "Modalities": "Text",
+      "Weights": "1.0 T",
+      "Test Acc (%)": 78.35,
+      "Macro F1 (%)": 68.71,
+      "Weighted F1 (%)": 79.82
+    },
+    {
+      "Configuration": "Audio (A)",
+      "Modalities": "Audio",
+      "Weights": "1.0 A",
+      "Test Acc (%)": 76.09,
+      "Macro F1 (%)": 66.64,
+      "Weighted F1 (%)": 77.6
+    },
+    {
+      "Configuration": "Video (V)",
+      "Modalities": "Video",
+      "Weights": "1.0 V",
+      "Test Acc (%)": 86.36,
+      "Macro F1 (%)": 78.54,
+      "Weighted F1 (%)": 87.07
+    },
+    {
+      "Configuration": "Text + Audio (T + A)",
+      "Modalities": "Text + Audio",
+      "Weights": "0.50 T + 0.50 A",
+      "Test Acc (%)": 91.38,
+      "Macro F1 (%)": 85.67,
+      "Weighted F1 (%)": 91.65
+    },
+    {
+      "Configuration": "Text + Video (T + V)",
+      "Modalities": "Text + Video",
+      "Weights": "0.40 T + 0.60 V",
+      "Test Acc (%)": 94.6,
+      "Macro F1 (%)": 90.67,
+      "Weighted F1 (%)": 94.72
+    },
+    {
+      "Configuration": "Audio + Video (A + V)",
+      "Modalities": "Audio + Video",
+      "Weights": "0.45 A + 0.55 V",
+      "Test Acc (%)": 94.75,
+      "Macro F1 (%)": 90.3,
+      "Weighted F1 (%)": 94.89
+    },
+    {
+      "Configuration": "Tri-Modal Late Fusion (Equal)",
+      "Modalities": "Text + Audio + Video",
+      "Weights": "0.33 T + 0.33 A + 0.34 V",
+      "Test Acc (%)": 98.12,
+      "Macro F1 (%)": 96.18,
+      "Weighted F1 (%)": 98.15
+    },
+    {
+      "Configuration": "Tri-Modal Late Fusion (Optimized)",
+      "Modalities": "Text + Audio + Video",
+      "Weights": "0.35 T + 0.27 A + 0.38 V",
+      "Test Acc (%)": 98.08,
+      "Macro F1 (%)": 96.14,
+      "Weighted F1 (%)": 98.11
+    },
+    {
+      "Configuration": "Multimodal Gated Attention Fusion",
+      "Modalities": "Text + Audio + Video",
+      "Weights": "Dynamic Modality Gate",
+      "Test Acc (%)": 85.74712643678161,
+      "Macro F1 (%)": 71.82094953593771,
+      "Weighted F1 (%)": 85.95646336270994
+    }
+  ]
+}

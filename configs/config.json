@@ -1,0 +1,160 @@
+{
+    "project": {
+        "name": "Explainable Multimodal Emotion Recognition and Communication Analysis",
+        "version": "0.1.0",
+        "description": "M.Sc. AI & ML project for multimodal emotion recognition using MELD dataset with explainability"
+    },
+    "dataset": {
+        "name": "MELD",
+        "github_repo": "https://github.com/declare-lab/MELD",
+        "huggingface": "declare-lab/MELD",
+        "raw_video_url": "http://web.eecs.umich.edu/~mihalcea/downloads/MELD.Raw.tar.gz",
+        "features_url": "http://web.eecs.umich.edu/~mihalcea/downloads/MELD.Features.Models.tar.gz",
+        "csv_files": {
+            "train": "data/MELD/train_sent_emo.csv",
+            "dev": "data/MELD/dev_sent_emo.csv",
+            "test": "data/MELD/test_sent_emo.csv"
+        },
+        "columns": [
+            "Sr No.", "Utterance", "Speaker", "Emotion", "Sentiment",
+            "Dialogue_ID", "Utterance_ID", "Season", "Episode",
+            "StartTime", "EndTime"
+        ],
+        "emotion_labels": ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"],
+        "emotion_label_map": {
+            "neutral": 0, "surprise": 1, "fear": 2, "sadness": 3,
+            "joy": 4, "disgust": 5, "anger": 6
+        },
+        "sentiment_labels": ["neutral", "positive", "negative"],
+        "sentiment_label_map": {
+            "neutral": 0, "positive": 1, "negative": 2
+        },
+        "class_weights_emotion": [4.0, 15.0, 15.0, 3.0, 1.0, 6.0, 3.0],
+        "splits": {
+            "train": {"utterances": 9989, "dialogues": 1038, "speakers": 260},
+            "dev":   {"utterances": 1109, "dialogues": 114,  "speakers": 47},
+            "test":  {"utterances": 2610, "dialogues": 280,  "speakers": 100}
+        }
+    },
+    "model": {
+        "text": {
+            "backbone": "bert-base-uncased",
+            "max_seq_length": 128,
+            "hidden_dim": 256,
+            "dropout": 0.3,
+            "freeze_layers": 8
+        },
+        "audio": {
+            "backbone": "opensmile",
+            "feature_set": "eGeMAPSv02",
+            "hidden_dim": 128,
+            "dropout": 0.3,
+            "fallback": "wav2vec2-base"
+        },
+        "video": {
+            "backbone": "resnet18",
+            "pretrained": true,
+            "feature_dim": 512,
+            "hidden_dim": 128,
+            "dropout": 0.3,
+            "frames_per_utterance": 8
+        },
+        "fusion": {
+            "method": "attention",
+            "hidden_dim": 256,
+            "num_heads": 4,
+            "dropout": 0.3,
+            "num_classes_emotion": 7,
+            "num_classes_sentiment": 3
+        },
+        "explainability": {
+            "methods": ["attention_weights", "integrated_gradients", "shap_text"],
+            "visualize_attention": true
+        },
+        "multilingual": {
+            "supported_languages": ["en", "hi", "ml", "ta"],
+            "default_language": "en",
+            "language_names": {
+                "en": "English",
+                "hi": "Hindi",
+                "ml": "Malayalam",
+                "ta": "Tamil"
+            },
+            "scripts": {
+                "en": "Latin",
+                "hi": "Devanagari",
+                "ml": "Malayalam",
+                "ta": "Tamil"
+            },
+            "approach_a": {
+                "name": "Direct Multilingual Model",
+                "backbone": "xlm-roberta-base",
+                "max_seq_length": 128,
+                "native_script_processing": true
+            },
+            "approach_b": {
+                "name": "Translation-Based Analysis",
+                "translation_engine": "IndicTrans2",
+                "english_backbone": "distilbert-base-uncased",
+                "enable_cache": true
+            },
+            "speech": {
+                "engine": "faster-whisper",
+                "model_size": "tiny",
+                "compute_type": "int8",
+                "vad_filter": true
+            },
+            "video_clip_analysis": {
+                "modality_weights": {
+                    "text": 0.40,
+                    "audio": 0.30,
+                    "video": 0.30
+                },
+                "max_audio_mb": 15,
+                "max_video_mb": 30
+            },
+            "evaluation": {
+                "eval_dir": "ml/data/multilingual_eval",
+                "benchmark_report": "exports/results_multilingual_benchmark.md",
+                "results_json": "exports/multilingual_benchmark_results.json"
+            }
+        }
+    },
+    "training": {
+        "batch_size": 32,
+        "batch_size_smoke": 8,
+        "epochs": 20,
+        "epochs_smoke": 2,
+        "learning_rate": 2e-5,
+        "weight_decay": 0.01,
+        "warmup_ratio": 0.1,
+        "gradient_accumulation_steps": 2,
+        "max_grad_norm": 1.0,
+        "early_stopping_patience": 5,
+        "scheduler": "cosine_with_warmup",
+        "fp16": true,
+        "seed": 42,
+        "smoke_test_samples": 200,
+        "checkpoint_dir": "/kaggle/working/checkpoints",
+        "export_dir": "/kaggle/working/exports"
+    },
+    "kaggle": {
+        "gpu_memory_fraction": 0.9,
+        "pin_memory": true,
+        "num_workers": 2,
+        "persistent_workers": true
+    },
+    "paths": {
+        "local": {
+            "data_dir": "ml/data/raw",
+            "model_dir": "ml/models",
+            "output_dir": "outputs"
+        },
+        "kaggle": {
+            "data_dir": "/kaggle/input/meld-dataset",
+            "working_dir": "/kaggle/working",
+            "checkpoint_dir": "/kaggle/working/checkpoints",
+            "export_dir": "/kaggle/working/exports"
+        }
+    }
+}

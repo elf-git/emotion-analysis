@@ -1,0 +1,15 @@
+{"id": "ml_01", "language": "ml", "text": "എനിക്ക് വളരെ സന്തോഷമുണ്ട്, നമ്മുടെ കഠിനാധ്വാനം വിജയം കണ്ടു!", "emotion": "joy", "sentiment": "positive", "speaker": "Rahul"}
+{"id": "ml_02", "language": "ml", "text": "ഇത് കേട്ടതിൽ വളരെയധികം ആഹ്ലാദവും സന്തോഷവും തോന്നുന്നു.", "emotion": "joy", "sentiment": "positive", "speaker": "Aparna"}
+{"id": "ml_03", "language": "ml", "text": "എനിക്ക് കടുത്ത ദേഷ്യമുണ്ട്, എന്നെ ഇങ്ങനെ വഞ്ചിക്കാൻ നിനക്കെങ്ങനെ തോന്നി?!", "emotion": "anger", "sentiment": "negative", "speaker": "Vishnu"}
+{"id": "ml_04", "language": "ml", "text": "നിന്റെ അസംബന്ധം കേട്ട് എനിക്ക് രോഷം അടക്കാൻ കഴിയുന്നില്ല!", "emotion": "anger", "sentiment": "negative", "speaker": "Devika"}
+{"id": "ml_05", "language": "ml", "text": "എനിക്ക് വളരെ സങ്കടമുണ്ട്, ഞാൻ പൂർണ്ണമായും ഒറ്റപ്പെട്ടുപോയി.", "emotion": "sadness", "sentiment": "negative", "speaker": "Manoj"}
+{"id": "ml_06", "language": "ml", "text": "എന്റെ ഉള്ളിൽ വലിയ വേദനയുണ്ട്, കണ്ണീരല്ലാതെ മറ്റൊന്നും ബാക്കിയില്ല.", "emotion": "sadness", "sentiment": "negative", "speaker": "Lakshmi"}
+{"id": "ml_07", "language": "ml", "text": "എനിക്ക് വല്ലാത്ത ഭയം തോന്നുന്നു, ആ ഇരുട്ടിൽ ആരോ നിൽക്കുന്നുണ്ട്!", "emotion": "fear", "sentiment": "negative", "speaker": "Jithin"}
+{"id": "ml_08", "language": "ml", "text": "പേടിയുണ്ട്, എന്റെ കൈകാലുകൾ ഭയം കൊണ്ട് വിറയ്ക്കുന്നു!", "emotion": "fear", "sentiment": "negative", "speaker": "Reshma"}
+{"id": "ml_09", "language": "ml", "text": "എന്ത്?! ഇത് എങ്ങനെ സംഭവിച്ചു, എനിക്ക് ഇത് വിശ്വസിക്കാൻ കഴിയുന്നില്ല!", "emotion": "surprise", "sentiment": "positive", "speaker": "Anand"}
+{"id": "ml_10", "language": "ml", "text": "ഇത് വലിയൊരു അത്ഭുതമാണ്, ഞാൻ ഒരിക്കലും ഇത് പ്രതീക്ഷിച്ചില്ല.", "emotion": "surprise", "sentiment": "positive", "speaker": "Sneha"}
+{"id": "ml_11", "language": "ml", "text": "ഛീ! ഇത് വളരെ വൃത്തികെട്ടതും അറപ്പുളവാക്കുന്നതുമായ കാര്യമാണ്.", "emotion": "disgust", "sentiment": "negative", "speaker": "Pradeep"}
+{"id": "ml_12", "language": "ml", "text": "ഈ അരോചകമായ പെരുമാറ്റത്തോട് എനിക്ക് കടുത്ത വെറുപ്പാണ്.", "emotion": "disgust", "sentiment": "negative", "speaker": "Gopika"}
+{"id": "ml_13", "language": "ml", "text": "ശരി, ഞാൻ നാളെ രാവിലെ പത്ത് മണിക്ക് ഓഫീസിൽ എത്താം.", "emotion": "neutral", "sentiment": "neutral", "speaker": "Harikrishnan"}
+{"id": "ml_14", "language": "ml", "text": "ഇന്ന് മഴ പെയ്യാൻ സാധ്യത കുറവാണ്, ആകാശം ശാന്തമാണ്.", "emotion": "neutral", "sentiment": "neutral", "speaker": "Sunil"}
+

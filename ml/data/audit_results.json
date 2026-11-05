@@ -1,0 +1,116 @@
+{
+  "train": {
+    "file": "train_sent_emo.csv",
+    "columns": [
+      "Sr No.",
+      "Utterance",
+      "Speaker",
+      "Emotion",
+      "Sentiment",
+      "Dialogue_ID",
+      "Utterance_ID",
+      "Season",
+      "Episode",
+      "StartTime",
+      "EndTime"
+    ],
+    "total_utterances": 9989,
+    "unique_dialogues": 1038,
+    "unique_speakers": 260,
+    "missing_utterances": 0,
+    "missing_emotions": 0,
+    "empty_speakers": 0,
+    "avg_utterance_words": 7.95,
+    "max_utterance_words": 69,
+    "emotion_distribution": {
+      "anger": 1109,
+      "disgust": 271,
+      "fear": 268,
+      "joy": 1743,
+      "neutral": 4710,
+      "sadness": 683,
+      "surprise": 1205
+    },
+    "sentiment_distribution": {
+      "negative": 2945,
+      "neutral": 4710,
+      "positive": 2334
+    }
+  },
+  "dev": {
+    "file": "dev_sent_emo.csv",
+    "columns": [
+      "Sr No.",
+      "Utterance",
+      "Speaker",
+      "Emotion",
+      "Sentiment",
+      "Dialogue_ID",
+      "Utterance_ID",
+      "Season",
+      "Episode",
+      "StartTime",
+      "EndTime"
+    ],
+    "total_utterances": 1109,
+    "unique_dialogues": 114,
+    "unique_speakers": 47,
+    "missing_utterances": 0,
+    "missing_emotions": 0,
+    "empty_speakers": 0,
+    "avg_utterance_words": 7.91,
+    "max_utterance_words": 37,
+    "emotion_distribution": {
+      "anger": 153,
+      "disgust": 22,
+      "fear": 40,
+      "joy": 163,
+      "neutral": 470,
+      "sadness": 111,
+      "surprise": 150
+    },
+    "sentiment_distribution": {
+      "negative": 406,
+      "neutral": 470,
+      "positive": 233
+    }
+  },
+  "test": {
+    "file": "test_sent_emo.csv",
+    "columns": [
+      "Sr No.",
+      "Utterance",
+      "Speaker",
+      "Emotion",
+      "Sentiment",
+      "Dialogue_ID",
+      "Utterance_ID",
+      "Season",
+      "Episode",
+      "StartTime",
+      "EndTime"
+    ],
+    "total_utterances": 2610,
+    "unique_dialogues": 280,
+    "unique_speakers": 100,
+    "missing_utterances": 0,
+    "missing_emotions": 0,
+    "empty_speakers": 0,
+    "avg_utterance_words": 8.21,
+    "max_utterance_words": 45,
+    "emotion_distribution": {
+      "anger": 345,
+      "disgust": 68,
+      "fear": 50,
+      "joy": 402,
+      "neutral": 1256,
+      "sadness": 208,
+      "surprise": 281
+    },
+    "sentiment_distribution": {
+      "negative": 833,
+      "neutral": 1256,
+      "positive": 521
+    }
+  }
+}

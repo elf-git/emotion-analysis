@@ -1,0 +1,27 @@
+{
+  "model_name": "text_emotion_distilbert",
+  "backbone": "distilbert-base-uncased",
+  "num_classes": 7,
+  "emotion_map": {
+    "neutral": 0,
+    "surprise": 1,
+    "fear": 2,
+    "sadness": 3,
+    "joy": 4,
+    "disgust": 5,
+    "anger": 6
+  },
+  "id_to_emotion": {
+    "0": "neutral",
+    "1": "surprise",
+    "2": "fear",
+    "3": "sadness",
+    "4": "joy",
+    "5": "disgust",
+    "6": "anger"
+  },
+  "max_seq_length": 128,
+  "hidden_dim": 256,
+  "weights_file": "text_emotion_distilbert.pt",
+  "best_val_f1_weighted": 0.5599427210762726
+}

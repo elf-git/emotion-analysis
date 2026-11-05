@@ -1,0 +1,8 @@
+{
+  "model_name": "video_emotion_baseline",
+  "feature_dim": 512,
+  "num_classes": 7,
+  "hidden_dim": 128,
+  "proj_dim": 256,
+  "best_val_f1_weighted": 0.6292434957249893
+}

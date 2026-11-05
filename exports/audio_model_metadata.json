@@ -1,0 +1,8 @@
+{
+  "model_name": "audio_emotion_baseline",
+  "feature_dim": 1611,
+  "num_classes": 7,
+  "hidden_dim": 128,
+  "proj_dim": 256,
+  "best_val_f1_weighted": 0.5465229892352935
+}

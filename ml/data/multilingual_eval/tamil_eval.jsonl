@@ -1,0 +1,15 @@
+{"id": "ta_01", "language": "ta", "text": "எனக்கு மிகவும் மகிழ்ச்சியாக இருக்கிறது, நம்முடைய வெற்றி உறுதியாகிவிட்டது!", "emotion": "joy", "sentiment": "positive", "speaker": "Karthik"}
+{"id": "ta_02", "language": "ta", "text": "நான் ரொம்ப சந்தோஷமா இருக்கேன், இது ஒரு இனிய தருணம்.", "emotion": "joy", "sentiment": "positive", "speaker": "Divya"}
+{"id": "ta_03", "language": "ta", "text": "எனக்கு கடுமையான கோபம் வருகிறது, என்னை ஏன் இப்படி ஏமாற்றினாய்?!", "emotion": "anger", "sentiment": "negative", "speaker": "Suresh"}
+{"id": "ta_04", "language": "ta", "text": "உன் முகத்திலேயே முழிக்க மாட்டேன், உன் மீது எனக்கு ஆத்திரம் பொங்குகிறது!", "emotion": "anger", "sentiment": "negative", "speaker": "Priya"}
+{"id": "ta_05", "language": "ta", "text": "எனக்கு ரொம்ப கவலையாக இருக்கிறது, எல்லாம் முடிந்துவிட்டது.", "emotion": "sadness", "sentiment": "negative", "speaker": "Vijay"}
+{"id": "ta_06", "language": "ta", "text": "என் இதயம் வலிக்கிறது, என் கண்களில் கண்ணீர் மட்டுமே மிஞ்சியுள்ளது.", "emotion": "sadness", "sentiment": "negative", "speaker": "Meenakshi"}
+{"id": "ta_07", "language": "ta", "text": "எனக்கு பயமாக இருக்கிறது, அங்கே ஏதோ பயங்கரமான ஆபத்து காத்திருக்கிறது!", "emotion": "fear", "sentiment": "negative", "speaker": "Dinesh"}
+{"id": "ta_08", "language": "ta", "text": "காப்பாற்றுங்கள்! அச்சம் என்னை நடுங்க வைக்கிறது.", "emotion": "fear", "sentiment": "negative", "speaker": "Kavitha"}
+{"id": "ta_09", "language": "ta", "text": "என்ன?! இது எப்படி நடந்தது, என்னால் இதை நம்பவே முடியவில்லை!", "emotion": "surprise", "sentiment": "positive", "speaker": "Aravind"}
+{"id": "ta_10", "language": "ta", "text": "இது ஒரு பெரிய ஆச்சரியம் மற்றும் எதிர்பாராத திருப்பம்.", "emotion": "surprise", "sentiment": "positive", "speaker": "Janani"}
+{"id": "ta_11", "language": "ta", "text": "சீ! இது மிகவும் அருவருப்பானது மற்றும் அசிங்கமான காட்சி.", "emotion": "disgust", "sentiment": "negative", "speaker": "Murugan"}
+{"id": "ta_12", "language": "ta", "text": "இந்த கேவலமான செயலை நினைத்தால் எனக்கு வெறுப்பு ஏற்படுகிறது.", "emotion": "disgust", "sentiment": "negative", "speaker": "Shanthi"}
+{"id": "ta_13", "language": "ta", "text": "சரி, நான் அந்த ஆவணங்களை மாலைக்குள் மின்னஞ்சல் செய்கிறேன்.", "emotion": "neutral", "sentiment": "neutral", "speaker": "Balaji"}
+{"id": "ta_14", "language": "ta", "text": "இன்று போக்குவரத்து வழக்கம்போல சாதாரணமாக உள்ளது.", "emotion": "neutral", "sentiment": "neutral", "speaker": "Raman"}
+

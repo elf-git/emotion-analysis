@@ -1,0 +1,15 @@
+{"id": "en_01", "language": "en", "text": "I am so incredibly happy and proud of what we achieved today!", "emotion": "joy", "sentiment": "positive", "speaker": "Chandler"}
+{"id": "en_02", "language": "en", "text": "This is genuinely the most wonderful news I have ever received.", "emotion": "joy", "sentiment": "positive", "speaker": "Monica"}
+{"id": "en_03", "language": "en", "text": "I am furious at you, how dare you go behind my back and lie?!", "emotion": "anger", "sentiment": "negative", "speaker": "Rachel"}
+{"id": "en_04", "language": "en", "text": "Stop yelling at me and just shut up for once!", "emotion": "anger", "sentiment": "negative", "speaker": "Ross"}
+{"id": "en_05", "language": "en", "text": "I feel so lonely and depressed, like nothing is ever going to get better.", "emotion": "sadness", "sentiment": "negative", "speaker": "Phoebe"}
+{"id": "en_06", "language": "en", "text": "The sorrow and pain in my chest right now is unbearable.", "emotion": "sadness", "sentiment": "negative", "speaker": "Joey"}
+{"id": "en_07", "language": "en", "text": "I am terrified, there is someone lurking in the dark outside!", "emotion": "fear", "sentiment": "negative", "speaker": "Rachel"}
+{"id": "en_08", "language": "en", "text": "Please help me, I am panicking and trembling with horror.", "emotion": "fear", "sentiment": "negative", "speaker": "Chandler"}
+{"id": "en_09", "language": "en", "text": "What?! Are you serious?! I cannot believe this happened!", "emotion": "surprise", "sentiment": "positive", "speaker": "Joey"}
+{"id": "en_10", "language": "en", "text": "Oh my god, what an incredible and unexpected shock!", "emotion": "surprise", "sentiment": "positive", "speaker": "Monica"}
+{"id": "en_11", "language": "en", "text": "That is absolutely disgusting and revolting, throw it away!", "emotion": "disgust", "sentiment": "negative", "speaker": "Phoebe"}
+{"id": "en_12", "language": "en", "text": "I feel utter contempt and revulsion towards that vile action.", "emotion": "disgust", "sentiment": "negative", "speaker": "Ross"}
+{"id": "en_13", "language": "en", "text": "I will send over the meeting notes before the end of the day.", "emotion": "neutral", "sentiment": "neutral", "speaker": "Chandler"}
+{"id": "en_14", "language": "en", "text": "The train usually arrives on platform three at this time.", "emotion": "neutral", "sentiment": "neutral", "speaker": "Monica"}
+

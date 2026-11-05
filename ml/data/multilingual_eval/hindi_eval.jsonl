@@ -1,0 +1,15 @@
+{"id": "hi_01", "language": "hi", "text": "मैं आज बहुत खुश हूँ, हमारा सपना सच हो गया!", "emotion": "joy", "sentiment": "positive", "speaker": "Aarav"}
+{"id": "hi_02", "language": "hi", "text": "शाबाश! यह सुनकर मन को बहुत खुशी और सुकून मिला।", "emotion": "joy", "sentiment": "positive", "speaker": "Pooja"}
+{"id": "hi_03", "language": "hi", "text": "मुझे तुमसे बहुत गुस्सा आ रहा है, तुमने मुझे धोखा क्यों दिया?!", "emotion": "anger", "sentiment": "negative", "speaker": "Rohit"}
+{"id": "hi_04", "language": "hi", "text": "चुप रहो! तुम्हारी बकवास सुनने के लिए मेरे पास समय नहीं है।", "emotion": "anger", "sentiment": "negative", "speaker": "Simran"}
+{"id": "hi_05", "language": "hi", "text": "मुझे बहुत दुख हो रहा है, सब कुछ बिखर गया और मैं अकेला रह गया।", "emotion": "sadness", "sentiment": "negative", "speaker": "Kabir"}
+{"id": "hi_06", "language": "hi", "text": "मेरी आँखों में आँसू हैं, यह दर्द अब मुझसे बर्दाश्त नहीं होता।", "emotion": "sadness", "sentiment": "negative", "speaker": "Ananya"}
+{"id": "hi_07", "language": "hi", "text": "मुझे बहुत डर लग रहा है, वहाँ अँधेरे में कोई डरावनी परछाई है!", "emotion": "fear", "sentiment": "negative", "speaker": "Vikas"}
+{"id": "hi_08", "language": "hi", "text": "बचाओ मुझे! खौफ से मेरा पूरा शरीर कांप रहा है।", "emotion": "fear", "sentiment": "negative", "speaker": "Neha"}
+{"id": "hi_09", "language": "hi", "text": "क्या?! यह कैसे मुमकिन हुआ, मुझे अपनी आँखों पर यकीन नहीं हो रहा!", "emotion": "surprise", "sentiment": "positive", "speaker": "Rohan"}
+{"id": "hi_10", "language": "hi", "text": "अरे वाह! यह तो एक बहुत बड़ा और अद्भुत आश्चर्य है।", "emotion": "surprise", "sentiment": "positive", "speaker": "Meera"}
+{"id": "hi_11", "language": "hi", "text": "छी! कितना गंदा, घिनौना और सड़ा हुआ खाना है यह।", "emotion": "disgust", "sentiment": "negative", "speaker": "Karan"}
+{"id": "hi_12", "language": "hi", "text": "मुझे इस घटिया व्यवहार से सख्त नफरत और घृणा है।", "emotion": "disgust", "sentiment": "negative", "speaker": "Priya"}
+{"id": "hi_13", "language": "hi", "text": "हाँ, मैं कल दोपहर तक अपनी फाइल सबमिट कर दूंगा।", "emotion": "neutral", "sentiment": "neutral", "speaker": "Amit"}
+{"id": "hi_14", "language": "hi", "text": "मौसम आज सामान्य है, न ज्यादा ठंड है न ज्यादा गर्मी।", "emotion": "neutral", "sentiment": "neutral", "speaker": "Suresh"}
+

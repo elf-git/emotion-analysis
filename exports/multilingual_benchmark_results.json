@@ -1,0 +1,1203 @@
+{
+  "en": {
+    "name": "English",
+    "evaluation": {
+      "sample_count": 14,
+      "approach_a": {
+        "name": "Approach A (Direct Multilingual)",
+        "metrics": {
+          "accuracy": 0.9286,
+          "macro_f1": 0.9238,
+          "weighted_f1": 0.9238,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              2,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 0.6667,
+              "recall": 1.0,
+              "f1": 0.8,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "en_01",
+            "text": "I am so incredibly happy and proud of what we achieved today!",
+            "true_emotion": "joy",
+            "predicted": "surprise"
+          }
+        ]
+      },
+      "approach_b": {
+        "name": "Approach B (Translation-Based)",
+        "metrics": {
+          "accuracy": 0.7857,
+          "macro_f1": 0.7959,
+          "weighted_f1": 0.7959,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              2,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 0.4,
+              "recall": 1.0,
+              "f1": 0.5714,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "en_02",
+            "text": "This is genuinely the most wonderful news I have ever received.",
+            "translated_text": "This is genuinely the most wonderful news I have ever received.",
+            "true_emotion": "joy",
+            "predicted": "neutral"
+          },
+          {
+            "id": "en_04",
+            "text": "Stop yelling at me and just shut up for once!",
+            "translated_text": "Stop yelling at me and just shut up for once!",
+            "true_emotion": "anger",
+            "predicted": "neutral"
+          },
+          {
+            "id": "en_08",
+            "text": "Please help me, I am panicking and trembling with horror.",
+            "translated_text": "Please help me, I am panicking and trembling with horror.",
+            "true_emotion": "fear",
+            "predicted": "neutral"
+          }
+        ]
+      },
+      "cross_approach_agreement": 0.7143
+    }
+  },
+  "hi": {
+    "name": "Hindi",
+    "evaluation": {
+      "sample_count": 14,
+      "approach_a": {
+        "name": "Approach A (Direct Multilingual)",
+        "metrics": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "weighted_f1": 1.0,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              2,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              2,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            }
+          }
+        },
+        "errors": []
+      },
+      "approach_b": {
+        "name": "Approach B (Translation-Based)",
+        "metrics": {
+          "accuracy": 0.6429,
+          "macro_f1": 0.6349,
+          "weighted_f1": 0.6349,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              2,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 0.2857,
+              "recall": 1.0,
+              "f1": 0.4444,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "hi_04",
+            "text": "चुप रहो! तुम्हारी बकवास सुनने के लिए मेरे पास समय नहीं है।",
+            "translated_text": "चुप रहो! तुम्हारी बकवास सुनने के लिए मेरे पास समय no है।",
+            "true_emotion": "anger",
+            "predicted": "neutral"
+          },
+          {
+            "id": "hi_05",
+            "text": "मुझे बहुत दुख हो रहा है, सब कुछ बिखर गया और मैं अकेला रह गया।",
+            "translated_text": "मुझे very दुख हो रहा है, all कुछ बिखर गया और I अकेला रह गया।",
+            "true_emotion": "sadness",
+            "predicted": "neutral"
+          },
+          {
+            "id": "hi_08",
+            "text": "बचाओ मुझे! खौफ से मेरा पूरा शरीर कांप रहा है।",
+            "translated_text": "बचाओ मुझे! terror से मेरा पूरा शरीर कांप रहा है।",
+            "true_emotion": "fear",
+            "predicted": "neutral"
+          },
+          {
+            "id": "hi_09",
+            "text": "क्या?! यह कैसे मुमकिन हुआ, मुझे अपनी आँखों पर यकीन नहीं हो रहा!",
+            "translated_text": "क्या?! यह कैसे मुमकिन हुआ, मुझे अपनी आँखों पर यकीन no हो रहा!",
+            "true_emotion": "surprise",
+            "predicted": "neutral"
+          },
+          {
+            "id": "hi_10",
+            "text": "अरे वाह! यह तो एक बहुत बड़ा और अद्भुत आश्चर्य है।",
+            "translated_text": "अरे वाह! यह तो एक very बड़ा और अद्भुत astonishment है।",
+            "true_emotion": "surprise",
+            "predicted": "neutral"
+          }
+        ]
+      },
+      "cross_approach_agreement": 0.6429
+    }
+  },
+  "ml": {
+    "name": "Malayalam",
+    "evaluation": {
+      "sample_count": 14,
+      "approach_a": {
+        "name": "Approach A (Direct Multilingual)",
+        "metrics": {
+          "accuracy": 0.7143,
+          "macro_f1": 0.7381,
+          "weighted_f1": 0.7381,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 0.3333,
+              "recall": 1.0,
+              "f1": 0.5,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "ml_02",
+            "text": "ഇത് കേട്ടതിൽ വളരെയധികം ആഹ്ലാദവും സന്തോഷവും തോന്നുന്നു.",
+            "true_emotion": "joy",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_05",
+            "text": "എനിക്ക് വളരെ സങ്കടമുണ്ട്, ഞാൻ പൂർണ്ണമായും ഒറ്റപ്പെട്ടുപോയി.",
+            "true_emotion": "sadness",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_10",
+            "text": "ഇത് വലിയൊരു അത്ഭുതമാണ്, ഞാൻ ഒരിക്കലും ഇത് പ്രതീക്ഷിച്ചില്ല.",
+            "true_emotion": "surprise",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_12",
+            "text": "ഈ അരോചകമായ പെരുമാറ്റത്തോട് എനിക്ക് കടുത്ത വെറുപ്പാണ്.",
+            "true_emotion": "disgust",
+            "predicted": "neutral"
+          }
+        ]
+      },
+      "approach_b": {
+        "name": "Approach B (Translation-Based)",
+        "metrics": {
+          "accuracy": 0.5,
+          "macro_f1": 0.4329,
+          "weighted_f1": 0.4329,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              2,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 0.2222,
+              "recall": 1.0,
+              "f1": 0.3636,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "ml_02",
+            "text": "ഇത് കേട്ടതിൽ വളരെയധികം ആഹ്ലാദവും സന്തോഷവും തോന്നുന്നു.",
+            "translated_text": "ഇത് കേട്ടതിൽ വളരെയധികം ആഹ്ലാദവും സന്തോഷവും തോന്നുന്നു.",
+            "true_emotion": "joy",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_05",
+            "text": "എനിക്ക് വളരെ സങ്കടമുണ്ട്, ഞാൻ പൂർണ്ണമായും ഒറ്റപ്പെട്ടുപോയി.",
+            "translated_text": "എനിക്ക് very സങ്കടമുണ്ട്, I പൂർണ്ണമായും ഒറ്റപ്പെട്ടുപോയി.",
+            "true_emotion": "sadness",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_06",
+            "text": "എന്റെ ഉള്ളിൽ വലിയ വേദനയുണ്ട്, കണ്ണീരല്ലാതെ മറ്റൊന്നും ബാക്കിയില്ല.",
+            "translated_text": "എന്റെ ഉള്ളിൽ വലിയ വേദനയുണ്ട്, കണ്ണീരല്ലാതെ മറ്റൊന്നും ബാക്കിയില്ല.",
+            "true_emotion": "sadness",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_09",
+            "text": "എന്ത്?! ഇത് എങ്ങനെ സംഭവിച്ചു, എനിക്ക് ഇത് വിശ്വസിക്കാൻ കഴിയുന്നില്ല!",
+            "translated_text": "എന്ത്?! ഇത് എങ്ങനെ സംഭവിച്ചു, എനിക്ക് ഇത് വിശ്വസിക്കാൻ കഴിയുന്നില്ല!",
+            "true_emotion": "surprise",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_10",
+            "text": "ഇത് വലിയൊരു അത്ഭുതമാണ്, ഞാൻ ഒരിക്കലും ഇത് പ്രതീക്ഷിച്ചില്ല.",
+            "translated_text": "ഇത് വലിയൊരു അത്ഭുതമാണ്, I ഒരിക്കലും ഇത് പ്രതീക്ഷിച്ചില്ല.",
+            "true_emotion": "surprise",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_11",
+            "text": "ഛീ! ഇത് വളരെ വൃത്തികെട്ടതും അറപ്പുളവാക്കുന്നതുമായ കാര്യമാണ്.",
+            "translated_text": "ഛീ! ഇത് very വൃത്തികെട്ടതും അറപ്പുളവാക്കുന്നതുമായ കാര്യമാണ്.",
+            "true_emotion": "disgust",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ml_12",
+            "text": "ഈ അരോചകമായ പെരുമാറ്റത്തോട് എനിക്ക് കടുത്ത വെറുപ്പാണ്.",
+            "translated_text": "ഈ അരോചകമായ പെരുമാറ്റത്തോട് എനിക്ക് കടുത്ത വെറുപ്പാണ്.",
+            "true_emotion": "disgust",
+            "predicted": "neutral"
+          }
+        ]
+      },
+      "cross_approach_agreement": 0.7857
+    }
+  },
+  "ta": {
+    "name": "Tamil",
+    "evaluation": {
+      "sample_count": 14,
+      "approach_a": {
+        "name": "Approach A (Direct Multilingual)",
+        "metrics": {
+          "accuracy": 0.7143,
+          "macro_f1": 0.6721,
+          "weighted_f1": 0.6721,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              2,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              2,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 0.4,
+              "recall": 1.0,
+              "f1": 0.5714,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "fear": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 2
+            },
+            "joy": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "anger": {
+              "precision": 0.6667,
+              "recall": 1.0,
+              "f1": 0.8,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "ta_02",
+            "text": "நான் ரொம்ப சந்தோஷமா இருக்கேன், இது ஒரு இனிய தருணம்.",
+            "true_emotion": "joy",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_07",
+            "text": "எனக்கு பயமாக இருக்கிறது, அங்கே ஏதோ பயங்கரமான ஆபத்து காத்திருக்கிறது!",
+            "true_emotion": "fear",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_11",
+            "text": "சீ! இது மிகவும் அருவருப்பானது மற்றும் அசிங்கமான காட்சி.",
+            "true_emotion": "disgust",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_12",
+            "text": "இந்த கேவலமான செயலை நினைத்தால் எனக்கு வெறுப்பு ஏற்படுகிறது.",
+            "true_emotion": "disgust",
+            "predicted": "anger"
+          }
+        ]
+      },
+      "approach_b": {
+        "name": "Approach B (Translation-Based)",
+        "metrics": {
+          "accuracy": 0.3571,
+          "macro_f1": 0.3297,
+          "weighted_f1": 0.3297,
+          "confusion_matrix": [
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "per_class": {
+            "neutral": {
+              "precision": 0.1818,
+              "recall": 1.0,
+              "f1": 0.3077,
+              "support": 2
+            },
+            "surprise": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "fear": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "sadness": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "joy": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 2
+            },
+            "disgust": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            },
+            "anger": {
+              "precision": 1.0,
+              "recall": 0.5,
+              "f1": 0.6667,
+              "support": 2
+            }
+          }
+        },
+        "errors": [
+          {
+            "id": "ta_01",
+            "text": "எனக்கு மிகவும் மகிழ்ச்சியாக இருக்கிறது, நம்முடைய வெற்றி உறுதியாகிவிட்டது!",
+            "translated_text": "எனக்கு மிகவும் மகிழ்ச்சியாக இருக்கிறது, நம்முடைய வெற்றி உறுதியாகிவிட்டது!",
+            "true_emotion": "joy",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_02",
+            "text": "நான் ரொம்ப சந்தோஷமா இருக்கேன், இது ஒரு இனிய தருணம்.",
+            "translated_text": "I very சந்தோஷமா இருக்கேன், இது ஒரு இனிய தருணம்.",
+            "true_emotion": "joy",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_03",
+            "text": "எனக்கு கடுமையான கோபம் வருகிறது, என்னை ஏன் இப்படி ஏமாற்றினாய்?!",
+            "translated_text": "எனக்கு கடுமையான anger வருகிறது, என்னை ஏன் இப்படி ஏமாற்றினாய்?!",
+            "true_emotion": "anger",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_05",
+            "text": "எனக்கு ரொம்ப கவலையாக இருக்கிறது, எல்லாம் முடிந்துவிட்டது.",
+            "translated_text": "எனக்கு very கவலையாக இருக்கிறது, எல்லாம் முடிந்துவிட்டது.",
+            "true_emotion": "sadness",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_06",
+            "text": "என் இதயம் வலிக்கிறது, என் கண்களில் கண்ணீர் மட்டுமே மிஞ்சியுள்ளது.",
+            "translated_text": "என் இதயம் வலிக்கிறது, என் கண்களில் கண்ணீர் மட்டுமே மிஞ்சியுள்ளது.",
+            "true_emotion": "sadness",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_07",
+            "text": "எனக்கு பயமாக இருக்கிறது, அங்கே ஏதோ பயங்கரமான ஆபத்து காத்திருக்கிறது!",
+            "translated_text": "எனக்கு பயமாக இருக்கிறது, அங்கே ஏதோ பயங்கரமான ஆபத்து காத்திருக்கிறது!",
+            "true_emotion": "fear",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_08",
+            "text": "காப்பாற்றுங்கள்! அச்சம் என்னை நடுங்க வைக்கிறது.",
+            "translated_text": "காப்பாற்றுங்கள்! terror என்னை நடுங்க வைக்கிறது.",
+            "true_emotion": "fear",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_09",
+            "text": "என்ன?! இது எப்படி நடந்தது, என்னால் இதை நம்பவே முடியவில்லை!",
+            "translated_text": "என்ன?! இது எப்படி நடந்தது, என்னால் இதை நம்பவே முடியவில்லை!",
+            "true_emotion": "surprise",
+            "predicted": "neutral"
+          },
+          {
+            "id": "ta_11",
+            "text": "சீ! இது மிகவும் அருவருப்பானது மற்றும் அசிங்கமான காட்சி.",
+            "translated_text": "சீ! இது மிகவும் அருவருப்பானது மற்றும் அசிங்கமான காட்சி.",
+            "true_emotion": "disgust",
+            "predicted": "neutral"
+          }
+        ]
+      },
+      "cross_approach_agreement": 0.5
+    }
+  }
+}
