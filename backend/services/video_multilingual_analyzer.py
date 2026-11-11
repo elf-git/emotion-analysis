@@ -164,7 +164,11 @@ class MultilingualVideoAnalyzer:
                         seg_native_text,
                         override_language=lang_code,
                         allow_translation=translate_to_english,
-                        translated_text=seg_translated_text if has_speech(seg_translated_text) else None,
+                        translated_text=(
+                            seg_translated_text
+                            if has_speech(seg_translated_text) and seg_translated_text != seg_native_text
+                            else None
+                        ),
                     )
                 elif segment_has_speech and has_speech(seg_translated_text) and seg_translated_text != seg_native_text:
                     # Other languages are scored through their English translation only

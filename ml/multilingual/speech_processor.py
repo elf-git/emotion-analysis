@@ -122,6 +122,62 @@ class MultilingualSpeechProcessor:
             audio_path = str(audio_input)
 
         try:
+            # 1. Accelerated Cloud Whisper via Groq LPU (Whisper Large V3 Turbo)
+            try:
+                from backend.services.groq_service import GroqService
+                if GroqService.is_available() and os.path.exists(audio_path) and os.path.getsize(audio_path) > 1000:
+                    groq_res = GroqService.transcribe_audio(
+                        audio_path,
+                        filename=filename,
+                        language=language_override.lower() if language_override else None,
+                    )
+                    if groq_res and groq_res.get("segments"):
+                        d_lang_meta = groq_res["detected_language"]
+                        d_lang = d_lang_meta["language_code"]
+                        logger.info(f"Using Groq Whisper Large V3 Turbo (Auto-detected: {d_lang_meta['language_name']})")
+                        
+                        # Groq gives no English translation here, so the text keeps its
+                        # original language and the text analyzer decides how to score it.
+                        segments = [
+                            {
+                                "start": s["start"],
+                                "end": s["end"],
+                                "duration": round(s["end"] - s["start"], 2),
+                                "text": s["text"],
+                                "translated_text": s["text"],
+                                "confidence": s.get("confidence"),
+                            }
+                            for s in groq_res["segments"]
+                        ]
+                        full_native = groq_res["full_transcript"]
+                        full_trans = full_native
+
+                        dur_sec = groq_res.get("duration", 0.0)
+                        if not dur_sec and segments:
+                            dur_sec = segments[-1]["end"]
+
+                        return {
+                            "status": "success",
+                            "detected_language": {
+                                "language_code": d_lang,
+                                "language_name": d_lang_meta["language_name"],
+                                "native_name": d_lang_meta.get("native_name", d_lang_meta["language_name"]),
+                                "confidence": None,
+                                "is_override": bool(language_override),
+                                "supported": d_lang in SUPPORTED_LANGUAGES,
+                            },
+                            "original_transcript": full_native,
+                            "translated_transcript": full_trans,
+                            "is_translated": False,
+                            "total_duration_sec": round(float(dur_sec), 2),
+                            "segments": segments,
+                            "engine": "groq_whisper_large_v3_turbo",
+                            "has_speech": True,
+                        }
+            except Exception as e:
+                logger.info(f"Groq Whisper cloud step note: {e}. Falling back to local Faster-Whisper.")
+
+            # 2. Local Faster-Whisper Engine
             model = cls.get_whisper_model()
             lang_param = language_override.lower() if language_override else None
             if lang_param and lang_param not in SUPPORTED_LANGUAGES:

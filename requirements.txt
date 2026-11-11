@@ -41,6 +41,7 @@ yt-dlp>=2024.1.0
 
 # Multilingual & Speech Processing
 faster-whisper>=1.0.0
+# groq>=0.9.0            # Optional: cloud Whisper transcription (needs GROQ_API_KEY)
 ctranslate2>=4.0.0
 sentencepiece>=0.2.0
 

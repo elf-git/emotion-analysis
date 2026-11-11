@@ -26,6 +26,10 @@ LANGUAGE_LABELS = {
     "hi": "Hindi",
     "ml": "Malayalam",
     "ta": "Tamil",
+    "te": "Telugu",
+    "kn": "Kannada",
+    "bn": "Bengali",
+    "mr": "Marathi",
     "all": "Multilingual",
 }
 
@@ -567,47 +571,93 @@ class SerpMovieSceneService:
         text: str,
         language_override: Optional[str] = None,
     ) -> Tuple[str, str]:
-        """Detects language and full language name from text/title markers."""
-        if language_override and language_override.lower() in ["en", "hi", "ml", "ta"]:
+        """Detects language and full language name from text/title markers and native scripts."""
+        if language_override and language_override.lower() in LANGUAGE_LABELS:
             lang = language_override.lower()
             return lang, LANGUAGE_LABELS.get(lang, "English")
 
+        # 1. Native Unicode Script Detection (100% precision for non-Latin scripts)
+        if re.search(r"[\u0900-\u097f]", text):
+            return "hi", "Hindi"
+        if re.search(r"[\u0d00-\u0d7f]", text):
+            return "ml", "Malayalam"
+        if re.search(r"[\u0b80-\u0bff]", text):
+            return "ta", "Tamil"
+        if re.search(r"[\u0c00-\u0c7f]", text):
+            return "te", "Telugu"
+        if re.search(r"[\u0c80-\u0cff]", text):
+            return "kn", "Kannada"
+        if re.search(r"[\u0980-\u09ff]", text):
+            return "bn", "Bengali"
+
         low = text.lower()
+
+        def _has_kw(markers: List[str]) -> bool:
+            for m in markers:
+                if " " in m:
+                    if m in low:
+                        return True
+                else:
+                    if re.search(r"\b" + re.escape(m) + r"\b", low):
+                        return True
+            return False
         
         # Tamil cinema keywords & markers
         ta_markers = [
             "rolex", "vikram", "leo", "jailer", "master", "asuran", "vedha", "suriya",
             "kamal", "rajini", "vijay", "dhanush", "tamil", "kollywood", "anirudh",
             "lokesh", "kaithi", "soorarai", "pariyerum", "nayanthara", "sivakarthikeyan",
-            "valimai", "thunivu", "beast", "petta", "mankatha", "mersal", "sarkar"
+            "valimai", "thunivu", "beast", "petta", "mankatha", "mersal", "sarkar",
+            "super deluxe", "vada chennai", "karnan", "jai bhim", "viduthalai", "ayalaan",
+            "thiruchitrambalam", "gargi"
         ]
-        if any(m in low for m in ta_markers):
+        if _has_kw(ta_markers):
             return "ta", "Tamil"
-
-        # Hindi cinema keywords & markers
-        hi_markers = [
-            "3 idiots", "taare zameen", "dangal", "sholay", "wasseypur", "chak de",
-            "shah rukh", "srk", "aamir", "salman", "rancho", "hindi", "bollywood",
-            "kabir khan", "ishaan", "swades", "lagaan", "jawan", "pathaan", "gangs of wasseypur"
-        ]
-        if any(m in low for m in hi_markers):
-            return "hi", "Hindi"
 
         # Malayalam cinema keywords & markers
         ml_markers = [
             "kumbalangi", "drishyam", "lucifer", "manichitrathazhu", "kireedam",
             "mohanlal", "mammootty", "fahadh", "soubin", "malayalam", "mollywood",
-            "georgekutty", "saji", "nagavalli", "shammi", "aavesham", "bheeshma", "premam"
+            "georgekutty", "saji", "nagavalli", "shammi", "aavesham", "bheeshma", "premam",
+            "manjummel", "bramayugam", "premalu", "neru", "malik", "trance", "nayattu",
+            "hridhyam", "minnal murali", "tovino", "kurup", "jallikattu"
         ]
-        if any(m in low for m in ml_markers):
+        if _has_kw(ml_markers):
             return "ml", "Malayalam"
+
+        # Hindi cinema keywords & markers
+        hi_markers = [
+            "3 idiots", "taare zameen", "dangal", "sholay", "wasseypur", "chak de",
+            "shah rukh", "srk", "aamir", "salman", "rancho", "hindi", "bollywood",
+            "kabir khan", "ishaan", "swades", "lagaan", "jawan", "pathaan", "gangs of wasseypur",
+            "jab tak hai jaan", "jab tak", "supergirl", "anushka sharma"
+        ]
+        if _has_kw(hi_markers):
+            return "hi", "Hindi"
+
+        # Telugu cinema keywords & markers
+        te_markers = [
+            "baahubali", "bahubali", "rrr", "pushpa", "devara", "kalki", "salaar",
+            "prabhas", "allu arjun", "ntr", "ram charan", "mahesh babu", "telugu",
+            "tollywood", "chiranjeevi", "rajamouli", "ss rajamouli", "vijay devarakonda"
+        ]
+        if _has_kw(te_markers):
+            return "te", "Telugu"
+
+        # Kannada cinema keywords & markers
+        kn_markers = [
+            "kgf", "kantara", "charlie 777", "yash", "rishab shetty", "shivarajkumar",
+            "kannada", "sandalwood", "upendra", "sudeep", "puneeth"
+        ]
+        if _has_kw(kn_markers):
+            return "kn", "Kannada"
 
         # English / Hollywood markers
         en_markers = [
             "interstellar", "dark knight", "good will hunting", "pursuit of happyness",
             "batman", "joker", "cooper", "english", "hollywood", "oppenheimer", "inception"
         ]
-        if any(m in low for m in en_markers):
+        if _has_kw(en_markers):
             return "en", "English"
 
         return "en", "English"
