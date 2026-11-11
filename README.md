@@ -4,6 +4,26 @@ An M.Sc. AI & ML project for explainable multimodal emotion recognition using th
 
 ---
 
+## ⚠️ Current Status: What Actually Runs
+
+The app runs **public pretrained models, not models trained by this project**:
+
+| Part | Model | Limits |
+|---|---|---|
+| Text | `j-hartmann/emotion-english-distilroberta-base` | English only, 7 emotions |
+| Face | `trpakov/vit-face-expression` + OpenCV face detection | 7 emotions, largest face only, not linked to the speaker |
+| Voice | `superb/wav2vec2-base-superb-er` | 4 emotions only, unreliable on film audio (labels white noise as joy), so it is used only where speech is recognized and has a low weight |
+| Speech | Faster-Whisper `small` | Malayalam and Tamil quality is weak |
+| Fusion | Fixed weighted late fusion (0.40 text, 0.15 voice, 0.45 face) | Weights set by hand, not fitted on labelled data |
+
+- Missing evidence is reported as `unknown`. It is never guessed or treated as neutral.
+- Hindi, Malayalam and Tamil text is scored with a keyword baseline and through English translation. IndicTrans2 and a native-script emotion model are not installed.
+- **The accuracy figures in this README and in the Evaluation tab are unverified.** No trained weights are in this repository, and the only saved measurements are 1 to 2 epoch smoke tests (test accuracy 31.0% text, 16.5% audio, 26.5% video). The system has not been evaluated on MELD.
+- Parts of the sections below describe the planned design, including DistilBERT, ResNet-18, IndicTrans2, openSMILE and gated fusion. They are not what the app currently runs.
+- Models download to `.model_cache/` on first use, about 1.5 GB.
+
+---
+
 ## 🚀 Phase 5: Web Application & Production Inference Platform
 
 The system features a **FastAPI** backend for low-latency multimodal neural inference and a modern **Next.js** frontend with glassmorphic UI aesthetics, dynamic charts, prediction timelines, uncertainty metrics, and visual Grad-CAM overlays.

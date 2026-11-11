@@ -4,7 +4,9 @@ Tests endpoints, validation, media processing, uncertainty quantification, and e
 """
 import io
 import sys
+import wave
 from pathlib import Path
+import numpy as np
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -21,6 +23,7 @@ from backend.main import (
     engine,
 )
 from backend.services.media_processor import process_audio_file, process_video_file
+from ml.pretrained_models import fuse
 
 
 def test_health_endpoint():
@@ -53,12 +56,23 @@ def test_predict_empty_input_fails():
         engine.predict_single(text=None, audio_features=None, video_features=None)
 
 
+def _tone_wav_bytes() -> bytes:
+    """One second of a 220 Hz tone as 16 kHz mono WAV."""
+    samples = (0.2 * np.sin(2 * np.pi * 220 * np.arange(16000) / 16000) * 32767).astype("<i2")
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(16000)
+        wav.writeframes(samples.tobytes())
+    return buffer.getvalue()
+
+
 def test_predict_with_audio_upload():
-    """Verify audio file upload processing and prosody summary extraction."""
-    wav_bytes = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00"
-    proc_a = process_audio_file(wav_bytes, "sample.wav", target_dim=engine.feature_dim)
-    assert proc_a["feature_vector"] is not None
-    assert proc_a["prosody"] is not None
+    """Verify audio is decoded, measured and passed to the voice model."""
+    proc_a = process_audio_file(_tone_wav_bytes(), "sample.wav")
+    assert proc_a["feature_vector"].shape == (7,)
+    assert proc_a["prosody"]["pitch_hz"] == pytest.approx(220, abs=5)
 
     res = engine.predict_single(
         text="Listen to how exciting this sounds!",
@@ -69,21 +83,49 @@ def test_predict_with_audio_upload():
     assert res["explainability"]["prosody_summary"] is not None
 
 
-def test_predict_with_video_upload():
-    """Verify video upload processing produces Grad-CAM visualization."""
-    video_bytes = b"\x00\x00\x00 ftypmp42\x00\x00\x00\x00mp42mp41" + b"\x00" * 2000
-    proc_v = process_video_file(video_bytes, "clip.mp4", target_dim=engine.feature_dim)
-    assert proc_v["feature_vector"] is not None
-    assert proc_v["visual_summary"] is not None
-    assert "gradcam_image_url" in proc_v["visual_summary"]
+def test_empty_audio_is_reported_as_missing():
+    """Verify unusable audio gives no prediction instead of an invented one."""
+    wav_bytes = b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x44\xac\x00\x00\x88\x58\x01\x00\x02\x00\x10\x00data\x00\x00\x00\x00"
+    proc_a = process_audio_file(wav_bytes, "empty.wav")
+    assert proc_a["feature_vector"] is None
+    assert proc_a["prosody"]["status"] == "unavailable"
 
-    res = engine.predict_single(
-        text="Look at my expression right now!",
-        video_features=proc_v["feature_vector"],
-        video_summary=proc_v["visual_summary"],
-    )
-    assert res["active_modalities"]["video"] is True
-    assert res["explainability"]["visual_summary"] is not None
+
+def test_video_without_face_is_reported_as_missing():
+    """Verify a video with no visible face gives no visual prediction."""
+    video_bytes = b"\x00\x00\x00 ftypmp42\x00\x00\x00\x00mp42mp41" + b"\x00" * 2000
+    proc_v = process_video_file(video_bytes, "clip.mp4")
+    assert proc_v["feature_vector"] is None
+    assert proc_v["visual_summary"]["faces_detected"] == 0
+    assert proc_v["visual_summary"]["gradcam_image_url"] is None
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("I am so happy today, this is great", "joy"),
+    ("I hate you, I am furious", "anger"),
+    ("My dog died and I feel empty", "sadness"),
+])
+def test_text_prediction_reads_meaning(text, expected):
+    """Verify predictions come from the model, including sentences with no keyword."""
+    assert engine.predict_single(text=text)["predicted_emotion"] == expected
+
+
+def test_prediction_is_repeatable():
+    """Verify the same input always gives the same result."""
+    first = engine.predict_single(text="I can't believe you did that!")
+    second = engine.predict_single(text="I can't believe you did that!")
+    assert first["probabilities"] == second["probabilities"]
+
+
+def test_fusion_uses_only_present_modalities():
+    """Verify missing modalities are skipped and no evidence gives no prediction."""
+    anger = np.zeros(7, dtype=np.float32)
+    anger[6] = 1.0
+    result = fuse({"text": None, "audio": None, "visual": anger})
+    assert result["predicted_emotion"] == "anger"
+    assert result["confidence"] == pytest.approx(1.0)
+    assert result["contributions"]["video_pct"] == 100.0
+    assert fuse({"text": None, "audio": None, "visual": None}) is None
 
 
 def test_dialogue_timeline():

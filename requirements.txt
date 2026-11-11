@@ -20,8 +20,8 @@ scipy>=1.11.0
 # librosa>=0.10.0        # Uncomment for audio processing
 
 # Video Processing
-# opencv-python>=4.8.0   # Uncomment for video frame extraction
-# Pillow>=10.0.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
 
 # Explainability
 # shap>=0.42.0           # Uncomment for SHAP explanations
@@ -36,6 +36,8 @@ fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
 python-multipart>=0.0.6
+httpx>=0.24.0
+yt-dlp>=2024.1.0
 
 # Multilingual & Speech Processing
 faster-whisper>=1.0.0

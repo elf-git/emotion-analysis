@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import logging
+import threading
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -36,6 +37,7 @@ from backend.services.media_processor import (
     MAX_VIDEO_BYTES,
 )
 from backend.services.youtube_downloader import YouTubeClipDownloader
+from ml.pretrained_models import MODEL_INFO, warm_up
 from ml.multilingual.language_detector import LanguageDetector, SUPPORTED_LANGUAGES
 from ml.multilingual.text_analyzer import MultilingualTextAnalyzer
 from ml.multilingual.speech_processor import MultilingualSpeechProcessor
@@ -62,6 +64,21 @@ app.add_middleware(
 )
 
 engine = MultimodalInferenceEngine.get_instance()
+
+
+def _warm_models() -> None:
+    try:
+        warm_up()
+        MultilingualSpeechProcessor.get_whisper_model()
+        logger.info("All models loaded and ready.")
+    except Exception as e:
+        logger.warning(f"Model warm-up failed, models will load on first use: {e}")
+
+
+@app.on_event("startup")
+def start_model_warm_up() -> None:
+    """Loads models in the background so the server starts straight away."""
+    threading.Thread(target=_warm_models, daemon=True).start()
 
 
 # -----------------------------------------------------------------------------
@@ -116,8 +133,8 @@ def health_check():
     return {
         "status": "healthy",
         "models_loaded": engine.is_loaded,
-        "device": str(engine.device),
-        "feature_dim": engine.feature_dim,
+        "model_status": engine.model_status,
+        "models": MODEL_INFO,
         "supported_emotions": EMOTION_NAMES,
         "upload_limits_mb": {
             "audio_max_mb": MAX_AUDIO_BYTES // (1024 * 1024),
@@ -155,7 +172,7 @@ async def predict_multimodal(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                     detail=f"Audio file exceeds maximum size limit of {MAX_AUDIO_BYTES // (1024*1024)}MB.",
                 )
-            proc_a = process_audio_file(audio_bytes, audio.filename or "input.wav", target_dim=engine.feature_dim)
+            proc_a = process_audio_file(audio_bytes, audio.filename or "input.wav", target_dim=256)
             audio_features = proc_a["feature_vector"]
             audio_summary = proc_a["prosody"]
         except ValueError as ve:
@@ -170,7 +187,7 @@ async def predict_multimodal(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                     detail=f"Video file exceeds maximum size limit of {MAX_VIDEO_BYTES // (1024*1024)}MB.",
                 )
-            proc_v = process_video_file(video_bytes, video.filename or "input.mp4", target_dim=engine.feature_dim)
+            proc_v = process_video_file(video_bytes, video.filename or "input.mp4", target_dim=256)
             video_features = proc_v["feature_vector"]
             video_summary = proc_v["visual_summary"]
         except ValueError as ve:
@@ -200,6 +217,24 @@ def predict_dialogue(request: DialogueRequest):
     return timeline_res
 
 
+def _load_smoke_test_results() -> Dict[str, Any]:
+    """Reads the only measured results in the repository: short smoke-test runs."""
+    results = {}
+    for name in ("text", "audio", "video"):
+        path = PROJECT_ROOT / "checkpoints" / f"{name}_model_results.json"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            metrics = data.get("test_metrics", {})
+            results[name] = {
+                "smoke_test": data.get("smoke_test"),
+                "epochs": len(data.get("history", [])),
+                "test_accuracy_pct": round(metrics.get("accuracy", 0.0) * 100.0, 1),
+                "test_f1_weighted_pct": round(metrics.get("f1_weighted", 0.0) * 100.0, 1),
+            }
+    return results
+
+
 @app.get("/api/benchmark")
 def get_benchmark_results():
     """Returns the official MELD ablation and multimodal benchmark results."""
@@ -218,6 +253,12 @@ def get_benchmark_results():
         "dataset": "MELD (Multimodal EmotionLines Dataset)",
         "split_sizes": {"train": 9989, "dev": 1109, "test": 2610},
         "benchmark": ablation_data,
+        "verified": False,
+        "warning": (
+            "These figures are fixed values from the repository. No trained weights exist to reproduce them, "
+            "and they do not describe the models this app runs."
+        ),
+        "saved_smoke_test_results": _load_smoke_test_results(),
     }
 
 
@@ -511,53 +552,40 @@ def analyze_youtube_movie_scene(req: YouTubeAnalysisRequest):
         )
 
     # 1. Download or retrieve cached YouTube stream
-    download_info = None
     try:
         download_info = YouTubeClipDownloader.download_clip(
             url_or_id=clean_id,
             max_duration_sec=300,
         )
     except Exception as e:
-        logger.warning(f"yt-dlp download failed ({e}). Proceeding to resilient fallback.")
+        logger.warning(f"yt-dlp download failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not download this video, so it was not analyzed: {e}",
+        )
 
-    if download_info and os.path.exists(download_info["file_path"]):
-        try:
-            with open(download_info["file_path"], "rb") as vf:
-                video_bytes = vf.read()
+    if not download_info or not os.path.exists(download_info["file_path"]):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not download this video, so it was not analyzed.",
+        )
 
-            result = MultilingualVideoAnalyzer.analyze_clip(
-                video_bytes=video_bytes,
-                filename=f"youtube_{clean_id}.mp4",
-                language_override=req.language_override,
-                translate_to_english=req.translate_to_english,
-                frame_sampling_interval_sec=req.frame_sampling_interval_sec,
-                segment_interval_sec=req.segment_interval_sec,
-                max_segments=req.max_segments,
-            )
-            result["video_stream_url"] = f"/api/scenes/video-stream/{clean_id}"
-            result["video_id"] = clean_id
-            result["is_live_inference"] = True
-            result["inference_source"] = "youtube_stream_neural_pipeline"
-            return result
-        except Exception as e:
-            logger.error(f"Error executing neural pipeline on downloaded stream: {e}", exc_info=True)
+    with open(download_info["file_path"], "rb") as vf:
+        video_bytes = vf.read()
 
-    # Resilient fallback if stream download blocked by environment/network restrictions
-    logger.info(f"Using dynamic scene neural pipeline for video ID {clean_id} ('{req.title}')")
-    res = SerpMovieSceneService.get_curated_scene_analysis(
-        video_id=clean_id,
-        title=req.title,
-        movie_name=req.movie_name,
-        character=req.character,
-        scene_description=req.scene_description,
-        emotion_tag=req.emotion_tag,
+    result = MultilingualVideoAnalyzer.analyze_clip(
+        video_bytes=video_bytes,
+        filename=f"youtube_{clean_id}.mp4",
         language_override=req.language_override,
         translate_to_english=req.translate_to_english,
-        thumbnail_url=req.thumbnail_url,
-        embed_url=req.embed_url,
+        frame_sampling_interval_sec=req.frame_sampling_interval_sec,
+        segment_interval_sec=req.segment_interval_sec,
+        max_segments=req.max_segments,
     )
-    return res
-
+    result["video_stream_url"] = f"/api/scenes/video-stream/{clean_id}"
+    result["video_id"] = clean_id
+    result["title"] = download_info.get("title")
+    return result
 
 
 if __name__ == "__main__":

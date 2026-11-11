@@ -28,7 +28,7 @@ export default function VideoUploader({
   setSelectedScene = null,
 }) {
   const [inputMode, setInputMode] = useState('youtube'); // 'youtube' or 'upload'
-  const [internalYoutubeUrl, setInternalYoutubeUrl] = useState('https://www.youtube.com/watch?v=yM3kO4_88Q8');
+  const [internalYoutubeUrl, setInternalYoutubeUrl] = useState('');
   const youtubeInputUrl = externalYoutubeUrl !== undefined ? externalYoutubeUrl : internalYoutubeUrl;
   const setYoutubeInputUrl = setExternalYoutubeUrl || setInternalYoutubeUrl;
 
@@ -64,36 +64,27 @@ export default function VideoUploader({
       <div className="cinema-card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#f4f4f5' }}>
-                Video Pipeline: YouTube Stream or Local Upload
-              </h2>
-              <span className="metric-badge">
-                yt-dlp Stream Engine
-              </span>
-            </div>
-            <p style={{ color: '#71717a', fontSize: '0.85rem', marginTop: '4px' }}>
-              Analyze video scenes directly from YouTube URLs or upload local video files for tri-modal emotion classification.
+            <h1 className="page-title">New analysis</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
+              Paste a YouTube link or upload a clip. Short scenes with clear faces and speech work best.
             </p>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div style={{ display: 'flex', gap: '4px', background: '#18181b', padding: '3px', borderRadius: 'var(--radius-md)', border: '1px solid #27272a' }}>
+          <div className="segmented">
             <button
               type="button"
               className={`studio-nav-btn ${inputMode === 'youtube' ? 'active' : ''}`}
-              style={{ padding: '5px 12px', fontSize: '0.8rem' }}
-              onClick={() => setInputMode('youtube')}
+                            onClick={() => setInputMode('youtube')}
             >
-              YouTube URL / ID
+              YouTube link
             </button>
             <button
               type="button"
               className={`studio-nav-btn ${inputMode === 'upload' ? 'active' : ''}`}
-              style={{ padding: '5px 12px', fontSize: '0.8rem' }}
-              onClick={() => setInputMode('upload')}
+                            onClick={() => setInputMode('upload')}
             >
-              Upload Local File
+              Upload file
             </button>
           </div>
         </div>
@@ -102,8 +93,8 @@ export default function VideoUploader({
         {inputMode === 'youtube' && (
           <div
             style={{
-              background: '#09090b',
-              border: '1px solid #27272a',
+              background: 'var(--bg-inset)',
+              border: '1px solid var(--line)',
               borderRadius: 'var(--radius-md)',
               padding: '20px',
               marginBottom: '20px',
@@ -117,13 +108,13 @@ export default function VideoUploader({
                   alignItems: 'center',
                   gap: '14px',
                   padding: '12px 16px',
-                  background: '#121214',
-                  border: '1px solid #27272a',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
                   borderRadius: 'var(--radius-md)',
                   marginBottom: '18px',
                 }}
               >
-                <div style={{ position: 'relative', width: '100px', height: '56px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: '#000000', border: '1px solid #27272a' }}>
+                <div style={{ position: 'relative', width: '100px', height: '56px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, background: '#000000', border: '1px solid var(--line)' }}>
                   <img
                     src={selectedScene.thumbnail_url || `https://img.youtube.com/vi/${selectedScene.video_id}/hqdefault.jpg`}
                     alt={selectedScene.title}
@@ -135,11 +126,11 @@ export default function VideoUploader({
                     <span className="metric-badge">
                       {selectedScene.language_name || selectedScene.language_code?.toUpperCase() || 'HINDI'}
                     </span>
-                    <span style={{ fontSize: '0.74rem', color: '#71717a' }}>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                       {selectedScene.movie_name || selectedScene.channel_name || 'Selected Movie Scene'}
                     </span>
                   </div>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#f4f4f5', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {selectedScene.title}
                   </h4>
                 </div>
@@ -155,15 +146,15 @@ export default function VideoUploader({
               </div>
             )}
 
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#a1a1aa', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                Paste YouTube Video URL or 11-Character Video ID
+            <div>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                YouTube link or video ID
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: '10px' }}>
+              <div className="url-row">
                 <input
                   type="text"
                   className="cinema-input font-mono"
-                  placeholder="https://www.youtube.com/watch?v=yoZLUnaC3JE or video ID"
+                  placeholder="https://www.youtube.com/watch?v=..."
                   value={youtubeInputUrl}
                   onChange={(e) => setYoutubeInputUrl(e.target.value)}
                   style={{ fontSize: '0.88rem' }}
@@ -174,48 +165,9 @@ export default function VideoUploader({
                   disabled={isAnalyzing || !youtubeInputUrl.trim()}
                   onClick={() => onAnalyzeYouTube(youtubeInputUrl.trim(), selectedScene)}
                 >
-                  {isAnalyzing ? 'Processing...' : 'Analyze YouTube'}
+                  {isAnalyzing ? 'Analyzing...' : 'Analyze'}
                 </button>
               </div>
-            </div>
-
-            {/* Quick Preset Buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid #18181b' }}>
-              <span style={{ fontSize: '0.72rem', color: '#71717a', fontWeight: '600' }}>
-                SAMPLE SCENES:
-              </span>
-              <button
-                type="button"
-                className="cinema-btn-secondary"
-                style={{ fontSize: '0.74rem', padding: '4px 10px' }}
-                onClick={() => setYoutubeInputUrl('https://www.youtube.com/watch?v=yM3kO4_88Q8')}
-              >
-                Kumbalangi Nights (ML)
-              </button>
-              <button
-                type="button"
-                className="cinema-btn-secondary"
-                style={{ fontSize: '0.74rem', padding: '4px 10px' }}
-                onClick={() => setYoutubeInputUrl('https://www.youtube.com/watch?v=S1XpD0r4m38')}
-              >
-                3 Idiots Hospital (HI)
-              </button>
-              <button
-                type="button"
-                className="cinema-btn-secondary"
-                style={{ fontSize: '0.74rem', padding: '4px 10px' }}
-                onClick={() => setYoutubeInputUrl('https://www.youtube.com/watch?v=t9yN821PqM8')}
-              >
-                Vikram Vedha (TA)
-              </button>
-              <button
-                type="button"
-                className="cinema-btn-secondary"
-                style={{ fontSize: '0.74rem', padding: '4px 10px' }}
-                onClick={() => setYoutubeInputUrl('https://www.youtube.com/watch?v=v77IOwXg3B4')}
-              >
-                Interstellar (EN)
-              </button>
             </div>
           </div>
         )}
@@ -242,15 +194,19 @@ export default function VideoUploader({
                   }
                 }}
               />
-              <div style={{ fontSize: '1.8rem', color: '#a1a1aa' }}>📁</div>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 16V4" />
+                <path d="m7 9 5-5 5 5" />
+                <path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+              </svg>
               <div>
-                <div style={{ fontWeight: '600', fontSize: '0.92rem', color: '#f4f4f5', marginBottom: '2px' }}>
-                  {videoFile ? videoFile.name : 'Select or drop video file here'}
+                <div style={{ fontWeight: '600', fontSize: '0.92rem', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                  {videoFile ? videoFile.name : 'Choose a video or drop it here'}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#71717a' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   {videoFile
                     ? `${(videoFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for analysis`
-                    : 'Supports MP4, WebM, MOV up to 100MB'}
+                    : 'MP4, WebM, MOV, AVI or MKV, up to 30 MB'}
                 </div>
               </div>
               {videoFile && (
@@ -261,22 +217,22 @@ export default function VideoUploader({
             </div>
 
             {videoPreviewUrl && (
-              <div className="cinema-card" style={{ padding: '12px', background: '#09090b', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div className="cinema-card" style={{ padding: '12px', background: 'var(--bg-inset)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: '#000000' }}>
                   <video src={videoPreviewUrl} controls playsInline style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '0.75rem', color: '#71717a' }}>
-                  <span>Local Preview Player</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <span>Preview</span>
                   <button
                     type="button"
-                    style={{ background: 'transparent', border: 'none', color: '#a1a1aa', cursor: 'pointer', fontSize: '0.75rem' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       setVideoFile(null);
                       setVideoPreviewUrl(null);
                     }}
                   >
-                    Remove File ✕
+                    Remove file
                   </button>
                 </div>
               </div>
@@ -287,45 +243,45 @@ export default function VideoUploader({
         {/* Configuration Parameters Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', alignItems: 'end', marginBottom: '20px' }}>
           <div>
-            <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
-              Frame Sampling Rate ({samplingInterval}s)
+            <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              Frame sampling
             </label>
             <select className="cinema-select" value={samplingInterval} onChange={(e) => setSamplingInterval(e.target.value)}>
-              <option value="0.5">0.5s (High Resolution)</option>
-              <option value="1.0">1.0s (Standard Balanced)</option>
-              <option value="1.5">1.5s (Accelerated Preview)</option>
-              <option value="2.0">2.0s (Keyframe Sparse)</option>
+              <option value="0.5">Every 0.5 seconds</option>
+              <option value="1.0">Every 1 second</option>
+              <option value="1.5">Every 1.5 seconds</option>
+              <option value="2.0">Every 2 seconds</option>
             </select>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
-              Segment Duration ({segmentDuration}s)
+            <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              Segment length
             </label>
             <select className="cinema-select" value={segmentDuration} onChange={(e) => setSegmentDuration(e.target.value)}>
-              <option value="2.0">2.0 Seconds (Fast Utterances)</option>
-              <option value="3.0">3.0 Seconds (Recommended)</option>
-              <option value="4.0">4.0 Seconds (Extended Turns)</option>
-              <option value="5.0">5.0 Seconds (Narrative Beats)</option>
+              <option value="2.0">2 seconds</option>
+              <option value="3.0">3 seconds (recommended)</option>
+              <option value="4.0">4 seconds</option>
+              <option value="5.0">5 seconds</option>
             </select>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+            <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
               Spoken Language
             </label>
             <select className="cinema-select" value={language} onChange={(e) => setLanguage(e.target.value)}>
-              <option value="auto">Auto-Detect (Faster-Whisper)</option>
-              <option value="en">English (MELD Benchmark)</option>
-              <option value="hi">Hindi (हिन्दी / Devanagari)</option>
+              <option value="auto">Detect automatically</option>
+              <option value="en">English</option>
+              <option value="hi">Hindi (हिन्दी)</option>
               <option value="ml">Malayalam (മലയാളം)</option>
               <option value="ta">Tamil (தமிழ்)</option>
             </select>
           </div>
 
           <div>
-            <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
-              IndicTrans2 Translation
+            <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              Translation
             </label>
             <div
               style={{
@@ -334,8 +290,8 @@ export default function VideoUploader({
                 gap: '10px',
                 height: '42px',
                 padding: '0 12px',
-                background: '#09090b',
-                border: '1px solid #27272a',
+                background: 'var(--bg-inset)',
+                border: '1px solid var(--line)',
                 borderRadius: 'var(--radius-md)',
               }}
             >
@@ -344,9 +300,9 @@ export default function VideoUploader({
                 id="cinema-translate-toggle"
                 checked={translate}
                 onChange={(e) => setTranslate(e.target.checked)}
-                style={{ width: '15px', height: '15px', accentColor: '#fafafa', cursor: 'pointer' }}
+                style={{ width: '15px', height: '15px', accentColor: '#f2efe8', cursor: 'pointer' }}
               />
-              <label htmlFor="cinema-translate-toggle" style={{ fontSize: '0.84rem', color: '#f4f4f5', cursor: 'pointer' }}>
+              <label htmlFor="cinema-translate-toggle" style={{ fontSize: '0.84rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
                 Translate to English
               </label>
             </div>
@@ -366,7 +322,7 @@ export default function VideoUploader({
                     style={{ width: '100%', padding: '12px', fontSize: '0.92rem' }}
                     onClick={onAnalyze}
                   >
-                    Analyze Uploaded Video File ({videoFile.name})
+                    Analyze {videoFile.name}
                   </button>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
@@ -376,30 +332,19 @@ export default function VideoUploader({
                       style={{ padding: '12px', fontSize: '0.88rem' }}
                       onClick={() => document.getElementById('cinema-video-file-input').click()}
                     >
-                      Choose Local Video File (.mp4, .webm)
+                      Choose a video file
                     </button>
                     <button
                       type="button"
-                      className="cinema-btn-primary"
+                      className="cinema-btn-secondary"
                       style={{ padding: '12px', fontSize: '0.88rem' }}
                       onClick={() => onLoadDemo('ml')}
                     >
-                      Run Instant Demo Scene
+                      View Scripted Sample
                     </button>
                   </div>
                 )
-              ) : (
-                <button
-                  className="cinema-btn-primary"
-                  style={{ width: '100%', padding: '12px', fontSize: '0.92rem' }}
-                  disabled={!youtubeInputUrl.trim() || isAnalyzing}
-                  onClick={() => onAnalyzeYouTube(youtubeInputUrl.trim(), selectedScene)}
-                >
-                  {selectedScene
-                    ? `Run Neural Pipeline on ${selectedScene.movie_name || selectedScene.title?.slice(0, 35)}`
-                    : 'Analyze YouTube Video with Neural Pipeline'}
-                </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>

@@ -14,7 +14,10 @@ import os
 import sys
 import json
 import asyncio
+import tempfile
 from pathlib import Path
+import cv2
+import numpy as np
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -146,11 +149,20 @@ def test_speech_processor_transcription():
     assert "end" in res["segments"][0]
 
 
+def _blank_video_bytes() -> bytes:
+    """A real two-second video with no faces and no audio."""
+    with tempfile.TemporaryDirectory() as folder:
+        path = os.path.join(folder, "blank.mp4")
+        writer = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), 10.0, (160, 120))
+        for _ in range(20):
+            writer.write(np.full((120, 160, 3), 40, dtype=np.uint8))
+        writer.release()
+        with open(path, "rb") as f:
+            return f.read()
+
+
 def test_full_clip_video_analysis():
-    """Verify full-clip multilingual video analysis produces aligned scene timeline and Grad-CAM."""
-    # Synthetic video bytes
-    video_bytes = b"\x00\x00\x00 ftypmp42\x00\x00\x00\x00mp42mp41" + b"\x00" * 3000
-    res = MultilingualVideoAnalyzer.analyze_clip(video_bytes, filename="test_clip.mp4", language_override="hi")
+    res = MultilingualVideoAnalyzer.analyze_clip(_blank_video_bytes(), filename="clip.mp4", language_override="hi")
     assert res["status"] == "success"
     assert "scene_summary" in res
     assert "timeline" in res

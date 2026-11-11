@@ -8,8 +8,12 @@ Tests:
   - Featured scene catalogue categorization
   - Full-clip movie scene video analysis pipeline with configurable intervals
 """
+import os
 import sys
+import tempfile
 from pathlib import Path
+import cv2
+import numpy as np
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -144,11 +148,22 @@ def test_search_scenes_endpoint_handler():
     assert len(res["results"]) >= 1
 
 
+def _blank_video_bytes() -> bytes:
+    """A real two-second video with no faces and no audio."""
+    with tempfile.TemporaryDirectory() as folder:
+        path = os.path.join(folder, "blank.mp4")
+        writer = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), 10.0, (160, 120))
+        for _ in range(20):
+            writer.write(np.full((120, 160, 3), 40, dtype=np.uint8))
+        writer.release()
+        with open(path, "rb") as f:
+            return f.read()
+
+
 def test_full_clip_movie_scene_analysis():
     """Verify full-clip movie scene video analysis with configurable frame and segment intervals."""
-    video_bytes = b"\x00\x00\x00 ftypmp42\x00\x00\x00\x00mp42mp41" + b"\x00" * 3500
     res = MultilingualVideoAnalyzer.analyze_clip(
-        video_bytes=video_bytes,
+        video_bytes=_blank_video_bytes(),
         filename="scene_clip.mp4",
         language_override="en",
         frame_sampling_interval_sec=0.5,
@@ -169,6 +184,19 @@ def test_full_clip_movie_scene_analysis():
     assert "visual" in first["modality_predictions"]
     assert "visual_gradcam_image" in first
 
+    # No speech, voice or face means no emotion is claimed
+    assert first["fused_emotion"] == "unknown"
+    assert res["scene_summary"]["dominant_emotion"] == "unknown"
+
+
+def test_unreadable_video_is_rejected():
+    """Verify a file with no video or audio gives an error, not a report."""
+    with pytest.raises(ValueError):
+        MultilingualVideoAnalyzer.analyze_clip(
+            video_bytes=b"\x00\x00\x00 ftypmp42" + b"\x00" * 3500,
+            filename="broken.mp4",
+        )
+
 
 
 def test_youtube_clip_downloader_url_cleaning():
@@ -178,26 +206,37 @@ def test_youtube_clip_downloader_url_cleaning():
     assert YouTubeClipDownloader.clean_video_id("https://www.youtube.com/watch?v=yM3kO4_88Q8") == "yM3kO4_88Q8"
     assert YouTubeClipDownloader.clean_video_id("https://youtu.be/S1XpD0r4m38?t=10") == "S1XpD0r4m38"
     assert YouTubeClipDownloader.clean_video_id("https://www.youtube.com/embed/v77IOwXg3B4") == "v77IOwXg3B4"
+    assert YouTubeClipDownloader.clean_video_id("https://www.youtube.com/shorts/8TLwVhmV-HE?feature=share") == "8TLwVhmV-HE"
     assert YouTubeClipDownloader.clean_video_id("r9LdOtwQd5c") == "r9LdOtwQd5c"
     assert YouTubeClipDownloader.clean_video_id("invalid-url-string") is None
 
 
-def test_analyze_youtube_video_scene_endpoint():
-    """Verify the YouTube analysis endpoint handler with URL validation and fallback."""
+def test_failed_youtube_download_is_not_analyzed(monkeypatch):
+    """Verify a failed download returns an error instead of an invented analysis."""
+    from fastapi import HTTPException
     from backend.main import analyze_youtube_movie_scene, YouTubeAnalysisRequest
+    from backend.services.youtube_downloader import YouTubeClipDownloader
 
-    req = YouTubeAnalysisRequest(
-        video_url="https://www.youtube.com/watch?v=yM3kO4_88Q8",
-        language_override="ml",
-        translate_to_english=True,
-        frame_sampling_interval_sec=1.0,
-        segment_interval_sec=3.0,
-        max_segments=4,
-    )
-    res = analyze_youtube_movie_scene(req)
+    def fail_download(*args, **kwargs):
+        raise RuntimeError("This video is unavailable")
 
-    assert "scene_summary" in res
-    assert "timeline" in res
+    monkeypatch.setattr(YouTubeClipDownloader, "download_clip", fail_download)
+    request = YouTubeAnalysisRequest(video_url="https://www.youtube.com/watch?v=yM3kO4_88Q8")
+    with pytest.raises(HTTPException) as error:
+        analyze_youtube_movie_scene(request)
+    assert error.value.status_code == 502
+
+
+def test_youtube_endpoint_analyzes_downloaded_file(monkeypatch, tmp_path):
+    """Verify the YouTube endpoint runs the real pipeline on the downloaded file."""
+    from backend.main import analyze_youtube_movie_scene, YouTubeAnalysisRequest
+    from backend.services.youtube_downloader import YouTubeClipDownloader
+
+    clip = tmp_path / "clip.mp4"
+    clip.write_bytes(_blank_video_bytes())
+    monkeypatch.setattr(YouTubeClipDownloader, "download_clip", lambda **kwargs: {"file_path": str(clip)})
+
+    res = analyze_youtube_movie_scene(YouTubeAnalysisRequest(video_url="yM3kO4_88Q8", max_segments=4))
     assert res["video_id"] == "yM3kO4_88Q8"
-    assert "dominant_emotion" in res["scene_summary"]
+    assert res["is_live_inference"] is True
     assert len(res["timeline"]) >= 1

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ml.multilingual.language_detector import LanguageDetector, SUPPORTED_LANGUAGES
 from ml.multilingual.translator import IndicTranslator
+from ml.pretrained_models import TEXT_MODEL_ID, TextEmotionModel
 
 def clean_indic_word(w: str) -> str:
     """Strips punctuation while strictly preserving Indic combining vowels and viramas."""
@@ -111,6 +112,7 @@ class MultilingualTextAnalyzer:
         text: str,
         override_language: Optional[str] = None,
         allow_translation: bool = True,
+        translated_text: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Executes both Approach A and Approach B, returns comparison, and highlights discrepancies.
@@ -119,6 +121,7 @@ class MultilingualTextAnalyzer:
             text: Utterance in English, Hindi, Malayalam, or Tamil.
             override_language: Optional user override language code ('en', 'hi', 'ml', 'ta').
             allow_translation: Whether translation-based pipeline is enabled.
+            translated_text: Optional English text from Whisper speech translation.
 
         Returns:
             Comprehensive evaluation dictionary.
@@ -136,7 +139,7 @@ class MultilingualTextAnalyzer:
 
         # 3. Run Approach B: Translation-Based Analysis
         if allow_translation:
-            approach_b = cls._run_approach_b(raw_text, lang_code)
+            approach_b = cls._run_approach_b(raw_text, lang_code, translated_text)
         else:
             approach_b = {
                 "approach_name": "Approach B: Translation-Based Emotion Analysis",
@@ -155,23 +158,69 @@ class MultilingualTextAnalyzer:
             "comparison": comparison,
             "primary_prediction": comparison["consensus_emotion"],
             "primary_confidence": comparison["consensus_confidence"],
+            "primary_probabilities": cls._primary_probabilities(approach_a, approach_b, comparison),
+        }
+
+    @staticmethod
+    def _primary_probabilities(app_a: Dict[str, Any], app_b: Dict[str, Any], comparison: Dict[str, Any]) -> np.ndarray:
+        """Returns the 7-class probabilities of the approach behind the consensus."""
+        def vector(approach: Dict[str, Any]) -> np.ndarray:
+            return np.array([approach["probabilities"][m]["probability"] for m in EMOTION_NAMES], dtype=np.float32)
+
+        if "probabilities" not in app_b:
+            return vector(app_a)
+        if comparison["agreed"]:
+            return (vector(app_a) + vector(app_b)) / 2.0
+        chosen = app_a if comparison["consensus_emotion"] == app_a["predicted_emotion"] else app_b
+        return vector(chosen)
+
+    @staticmethod
+    def _probability_dict(probs: np.ndarray) -> Dict[str, Dict[str, Any]]:
+        return {
+            EMOTION_NAMES[i]: {
+                "probability": round(float(probs[i]), 4),
+                "percentage": round(float(probs[i]) * 100.0, 1),
+                "color": EMOTION_COLORS[EMOTION_NAMES[i]],
+            }
+            for i in range(len(EMOTION_NAMES))
+        }
+
+    @classmethod
+    def _run_english_model(cls, text: str) -> Dict[str, Any]:
+        """Scores English text with the pretrained model and explains the prediction."""
+        probs = TextEmotionModel.predict(text)
+        pred_idx = int(np.argmax(probs))
+        pred_emotion = EMOTION_NAMES[pred_idx]
+        conf = float(probs[pred_idx])
+        return {
+            "predicted_emotion": pred_emotion,
+            "confidence": round(conf, 4),
+            "confidence_pct": round(conf * 100.0, 1),
+            "probabilities": cls._probability_dict(probs),
+            "entropy": round(compute_normalized_entropy(probs), 4),
+            "token_attributions": TextEmotionModel.explain(text, pred_emotion),
         }
 
     @classmethod
     def _run_approach_a(cls, text: str, lang_code: str, lang_info: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Approach A: Direct Multilingual Emotion Classification.
-        Processes native Indic scripts (Devanagari, Malayalam, Tamil) or English natively.
+        Approach A: Direct analysis of the original language.
+        English uses the pretrained model. Hindi, Malayalam and Tamil use a keyword
+        lexicon, because no native-script emotion model is installed.
         """
+        if lang_code == "en":
+            return {
+                "approach_name": "Approach A: Direct Model",
+                "model_architecture": TEXT_MODEL_ID,
+                "evaluated_on_native_script": True,
+                "script_type": lang_info["script"],
+                **cls._run_english_model(text),
+            }
+
         words = text.split()
-        num_words = max(1, len(words))
 
         # Base neutral distribution
         logits = np.array([1.2, 0.4, 0.2, 0.3, 0.5, 0.1, 0.3], dtype=np.float32)
-
-        # Seed random generator deterministically based on text
-        rng = np.random.RandomState(abs(hash(text)) % (2**31 - 1))
-        logits += rng.normal(0.0, 0.15, size=len(logits))
 
         # Check keyword affinities in native script
         word_affinities = {w: np.zeros(len(EMOTION_NAMES), dtype=np.float32) for w in words}
@@ -200,7 +249,7 @@ class MultilingualTextAnalyzer:
             # Importance score based on emotional affinity or length weight
             base_score = float(np.sum(word_affinities[w]))
             if base_score == 0:
-                base_score = float(rng.uniform(0.05, 0.25))
+                base_score = 0.05
             token_attributions.append({
                 "token": w,
                 "importance_score": round(base_score, 4),
@@ -226,8 +275,8 @@ class MultilingualTextAnalyzer:
         }
 
         return {
-            "approach_name": "Approach A: Direct Multilingual Model",
-            "model_architecture": "XLM-RoBERTa / IndicBERT Multilingual Emotion Head",
+            "approach_name": "Approach A: Keyword Lexicon Baseline",
+            "model_architecture": "Keyword lexicon (not a neural model)",
             "evaluated_on_native_script": True,
             "script_type": lang_info["script"],
             "predicted_emotion": pred_emotion,
@@ -239,80 +288,35 @@ class MultilingualTextAnalyzer:
         }
 
     @classmethod
-    def _run_approach_b(cls, text: str, lang_code: str) -> Dict[str, Any]:
+    def _run_approach_b(cls, text: str, lang_code: str, translated_text: Optional[str] = None) -> Dict[str, Any]:
         """
-        Approach B: Translation-Based Emotion Analysis.
-        Translates text to English via IndicTrans2, then evaluates with MELD DistilBERT.
+        Approach B: Translate to English, then score with the pretrained English model.
+        Uses Whisper's speech translation when provided, otherwise the phrase lexicon.
         """
-        # 1. Translate
-        trans_res = IndicTranslator.translate_to_english(text, lang_code)
-        translated_text = trans_res["translated_text"]
-
-        # 2. Evaluate translated English text via MELD model logic
-        words = translated_text.split()
-        logits = np.array([1.0, 0.3, 0.2, 0.4, 0.6, 0.1, 0.3], dtype=np.float32)
-
-        rng = np.random.RandomState(abs(hash(translated_text)) % (2**31 - 1))
-        logits += rng.normal(0.0, 0.12, size=len(logits))
-
-        # English MELD keyword heuristics
-        t_lower = translated_text.lower()
-        if any(w in t_lower for w in ["happy", "great", "love", "awesome", "joy", "good", "delight"]):
-            logits[EMOTION_MAP["joy"]] += 3.5
-        elif any(w in t_lower for w in ["hate", "furious", "angry", "rage", "damn", "detest"]):
-            logits[EMOTION_MAP["anger"]] += 3.5
-        elif any(w in t_lower for w in ["sad", "cry", "pain", "hurt", "alone", "depressed", "sorrow"]):
-            logits[EMOTION_MAP["sadness"]] += 3.5
-        elif any(w in t_lower for w in ["fear", "scared", "terrified", "afraid", "frightened"]):
-            logits[EMOTION_MAP["fear"]] += 3.5
-        elif any(w in t_lower for w in ["wow", "omg", "what", "surprise", "incredible", "shocked"]):
-            logits[EMOTION_MAP["surprise"]] += 3.5
-        elif any(w in t_lower for w in ["disgust", "gross", "nasty", "vile", "repulsive"]):
-            logits[EMOTION_MAP["disgust"]] += 3.5
-
-        exp_logits = np.exp(logits - np.max(logits))
-        probs = exp_logits / np.sum(exp_logits)
-        pred_idx = int(np.argmax(probs))
-        pred_emotion = EMOTION_NAMES[pred_idx]
-        conf = float(probs[pred_idx])
-
-        # English token attributions
-        token_attributions = []
-        for w in words:
-            score = float(rng.uniform(0.1, 0.9)) if len(w) > 3 else float(rng.uniform(0.05, 0.2))
-            token_attributions.append({
-                "token": w,
-                "importance_score": round(score, 4),
-            })
-        tot = sum(t["importance_score"] for t in token_attributions) or 1.0
-        for t in token_attributions:
-            t["importance_pct"] = round((t["importance_score"] / tot) * 100.0, 1)
-
-        token_attributions.sort(key=lambda x: x["importance_score"], reverse=True)
-        entropy = compute_normalized_entropy(probs)
-
-        prob_dict = {
-            EMOTION_NAMES[i]: {
-                "probability": round(float(probs[i]), 4),
-                "percentage": round(float(probs[i]) * 100.0, 1),
-                "color": EMOTION_COLORS[EMOTION_NAMES[i]],
-            }
-            for i in range(len(EMOTION_NAMES))
-        }
+        if translated_text and translated_text.strip():
+            english = translated_text.strip()
+            service = "Native English (No translation required)" if lang_code == "en" else "Whisper speech translation"
+            translation_confidence = None
+        else:
+            trans_res = IndicTranslator.translate_to_english(text, lang_code)
+            english = trans_res["translated_text"]
+            service = trans_res["service"]
+            translation_confidence = trans_res["translation_confidence"]
+            if "[English context:" in english:
+                return {
+                    "approach_name": "Approach B: Translation-Based Emotion Analysis",
+                    "enabled": False,
+                    "reason": "No translation available for this sentence",
+                }
 
         return {
             "approach_name": "Approach B: Translation-Based Emotion Analysis",
-            "model_architecture": "DistilBERT (MELD Pretrained) + IndicTrans2 Translator",
+            "model_architecture": f"{TEXT_MODEL_ID} on English text",
             "evaluated_on_translated_english": True,
-            "translated_text": translated_text,
-            "translation_service": trans_res["service"],
-            "translation_confidence": trans_res["translation_confidence"],
-            "predicted_emotion": pred_emotion,
-            "confidence": round(conf, 4),
-            "confidence_pct": round(conf * 100.0, 1),
-            "probabilities": prob_dict,
-            "entropy": round(entropy, 4),
-            "token_attributions": token_attributions,
+            "translated_text": english,
+            "translation_service": service,
+            "translation_confidence": translation_confidence,
+            **cls._run_english_model(english),
         }
 
     @classmethod
@@ -328,7 +332,7 @@ class MultilingualTextAnalyzer:
                 "agreed": True,
                 "consensus_emotion": app_a["predicted_emotion"],
                 "consensus_confidence": app_a["confidence"],
-                "discrepancy_note": "Approach B disabled; relying exclusively on Direct Multilingual Model.",
+                "discrepancy_note": f"Approach B unavailable; relying on Approach A. {app_b.get('reason', '')}".strip(),
             }
 
         emo_a = app_a["predicted_emotion"]

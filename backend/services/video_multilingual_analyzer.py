@@ -4,10 +4,7 @@ Coordinates audio extraction, multilingual speech recognition, timestamp alignme
 modality feature extraction (Text, Audio, Video), tri-modal fusion, and scene aggregation.
 """
 import os
-import io
 import cv2
-import wave
-import base64
 import tempfile
 import subprocess
 import logging
@@ -30,11 +27,23 @@ from backend.services.inference_service import (
     EMOTION_VALENCE,
 )
 from ml.multilingual.language_detector import LanguageDetector, SUPPORTED_LANGUAGES
-from ml.multilingual.speech_processor import MultilingualSpeechProcessor
+from ml.multilingual.speech_processor import MultilingualSpeechProcessor, NO_SPEECH_TEXT, has_speech
 from ml.multilingual.text_analyzer import MultilingualTextAnalyzer
-from ml.multilingual.translator import IndicTranslator
+from ml.pretrained_models import (
+    MODEL_INFO,
+    SAMPLE_RATE,
+    FaceEmotionModel,
+    VoiceEmotionModel,
+    compute_prosody,
+    fuse,
+    load_audio,
+)
 
 logger = logging.getLogger(__name__)
+
+UNKNOWN_EMOTION = "unknown"
+UNKNOWN_COLOR = "#52525b"
+MAX_FRAMES_PER_SEGMENT = 5
 
 
 class MultilingualVideoAnalyzer:
@@ -78,7 +87,9 @@ class MultilingualVideoAnalyzer:
             audio_extracted = cls._extract_audio(video_path, audio_path)
 
             # 2. Transcribe speech using Multilingual Whisper
+            wave_data = None
             if audio_extracted and os.path.exists(audio_path) and os.path.getsize(audio_path) > 1000:
+                wave_data = load_audio(audio_path)
                 transcription_res = MultilingualSpeechProcessor.transcribe(
                     audio_path,
                     filename=os.path.basename(audio_path),
@@ -86,12 +97,8 @@ class MultilingualVideoAnalyzer:
                     translate_to_english=translate_to_english,
                 )
             else:
-                # Direct synthetic transcription fallback if ffmpeg had no audio track
-                transcription_res = MultilingualSpeechProcessor.transcribe(
-                    b"RIFFmock",
-                    filename="mock.wav",
-                    language_override=language_override,
-                    translate_to_english=translate_to_english,
+                transcription_res = MultilingualSpeechProcessor._fallback_transcription(
+                    audio_path, language_override, translate_to_english
                 )
 
             detected_lang = transcription_res["detected_language"]
@@ -100,6 +107,8 @@ class MultilingualVideoAnalyzer:
 
             # 3. Analyze Video Metadata (FPS, duration, frames)
             video_meta = cls._get_video_metadata(video_path)
+            if video_meta.get("total_frames", 0) == 0 and not audio_extracted:
+                raise ValueError("This file has no readable video or audio.")
             total_duration = max(video_meta.get("duration", 2.0), transcription_res.get("total_duration_sec", 2.0))
 
             # 4. Segment Partitioning (Speech-aligned or sliding-window intervals)
@@ -110,17 +119,18 @@ class MultilingualVideoAnalyzer:
                 while cur < total_duration and len(segments) < max_segments:
                     end_t = min(total_duration, cur + segment_interval_sec)
                     # Find matching dialogue text in this window
-                    overlap_texts = [
-                        s.get("text", "") for s in raw_segments
-                        if (s.get("start", 0) < end_t and s.get("end", total_duration) > cur)
+                    overlapping = [
+                        s for s in raw_segments
+                        if has_speech(s.get("text")) and s.get("start", 0) < end_t and s.get("end", total_duration) > cur
                     ]
-                    win_text = " ".join(overlap_texts).strip() or "[Non-verbal scene segment]"
+                    win_text = " ".join(s["text"] for s in overlapping).strip() or NO_SPEECH_TEXT
+                    win_translated = " ".join(s.get("translated_text", s["text"]) for s in overlapping).strip() or NO_SPEECH_TEXT
                     segments.append({
                         "start": round(cur, 2),
                         "end": round(end_t, 2),
                         "duration": round(end_t - cur, 2),
                         "text": win_text,
-                        "translated_text": win_text if lang_code == "en" else IndicTranslator.translate_to_english(win_text, lang_code)["translated_text"],
+                        "translated_text": win_translated,
                     })
                     cur = end_t
             elif raw_segments:
@@ -130,9 +140,9 @@ class MultilingualVideoAnalyzer:
                     "start": 0.0,
                     "end": round(total_duration, 2),
                     "duration": round(total_duration, 2),
-                    "text": transcription_res.get("original_transcript", "[Non-verbal scene]"),
-                    "translated_text": transcription_res.get("translated_transcript", "[Non-verbal scene]"),
-                    "confidence": 0.70,
+                    "text": NO_SPEECH_TEXT,
+                    "translated_text": NO_SPEECH_TEXT,
+                    "confidence": 0.0,
                 }]
 
             # 5. Segment-level Multi-Modal Alignment & Prediction
@@ -145,60 +155,75 @@ class MultilingualVideoAnalyzer:
                 seg_native_text = seg.get("text", "")
                 seg_translated_text = seg.get("translated_text", seg_native_text)
 
-                # A. Text Modality Prediction (Dual-Approach A & B)
-                text_analysis = MultilingualTextAnalyzer.analyze(
-                    seg_native_text,
-                    override_language=lang_code,
-                    allow_translation=translate_to_english,
-                )
-                text_emo = text_analysis["primary_prediction"]
-                text_conf = text_analysis["primary_confidence"]
+                # A. Text modality: only real recognized speech is scored
+                text_analysis = None
+                text_probs = None
+                segment_has_speech = has_speech(seg_native_text)
+                if segment_has_speech and detected_lang.get("supported", True):
+                    text_analysis = MultilingualTextAnalyzer.analyze(
+                        seg_native_text,
+                        override_language=lang_code,
+                        allow_translation=translate_to_english,
+                        translated_text=seg_translated_text if has_speech(seg_translated_text) else None,
+                    )
+                elif segment_has_speech and has_speech(seg_translated_text) and seg_translated_text != seg_native_text:
+                    # Other languages are scored through their English translation only
+                    text_analysis = MultilingualTextAnalyzer.analyze(seg_translated_text, override_language="en")
+                if text_analysis:
+                    text_probs = text_analysis["primary_probabilities"]
 
-                # B. Visual Modality Prediction & Grad-CAM for this time window
-                visual_res = cls._extract_segment_visual(video_path, seg_start, seg_end, idx)
-                visual_emo = visual_res["predicted_emotion"]
-                visual_conf = visual_res["confidence"]
+                # B. Visual modality: faces in this time window
+                visual_res = cls._extract_segment_visual(video_path, seg_start, seg_end, frame_sampling_interval_sec)
 
-                # C. Acoustic Modality Prediction for this time window
-                acoustic_res = cls._extract_segment_acoustic(audio_path, seg_start, seg_end, idx)
-                acoustic_emo = acoustic_res["predicted_emotion"]
-                acoustic_conf = acoustic_res["confidence"]
+                # C. Acoustic modality: the voice model is only used where speech was
+                # recognized, because it gives confident nonsense on music and noise
+                acoustic_res = cls._extract_segment_acoustic(wave_data, seg_start, seg_end, segment_has_speech)
 
-                # D. Modality Alignment & Dynamic Gating Fusion
-                # Weighting: 0.40 Text, 0.30 Acoustic, 0.30 Visual
-                fused_probs = np.zeros(len(EMOTION_NAMES), dtype=np.float32)
-                fused_probs[EMOTION_MAP[text_emo]] += 0.40 * text_conf
-                fused_probs[EMOTION_MAP[acoustic_emo]] += 0.30 * acoustic_conf
-                fused_probs[EMOTION_MAP[visual_emo]] += 0.30 * visual_conf
+                # D. Weighted late fusion of the modalities that have evidence
+                fusion = fuse({
+                    "text": text_probs,
+                    "audio": acoustic_res["probabilities"],
+                    "visual": visual_res["probabilities"],
+                })
 
-                # Normalize probabilities
-                sum_p = np.sum(fused_probs)
-                if sum_p > 0:
-                    fused_probs /= sum_p
-                else:
+                if fusion is None:
                     fused_probs = np.ones(len(EMOTION_NAMES), dtype=np.float32) / len(EMOTION_NAMES)
+                    fused_emo = UNKNOWN_EMOTION
+                    fused_conf = 0.0
+                    contributions = {"text_pct": 0.0, "audio_pct": 0.0, "video_pct": 0.0, "dominant_modality": "None"}
+                    explanation = "No speech, usable voice or visible face in this segment, so no emotion was estimated."
+                else:
+                    fused_probs = fusion["probabilities"]
+                    fused_emo = fusion["predicted_emotion"]
+                    fused_conf = fusion["confidence"]
+                    contributions = fusion["contributions"]
+                    emotion_counts[fused_emo] += 1
+                    used = [
+                        label for label, probs in (
+                            ("text", text_probs),
+                            ("voice", acoustic_res["probabilities"]),
+                            ("face", visual_res["probabilities"]),
+                        ) if probs is not None
+                    ]
+                    explanation = (
+                        f"{fused_emo.upper()} ({round(fused_conf * 100.0, 1)}%) from late fusion of {', '.join(used)}. "
+                        f"Strongest support: {contributions['dominant_modality']}."
+                    )
 
-                fused_idx = int(np.argmax(fused_probs))
-                fused_emo = EMOTION_NAMES[fused_idx]
-                fused_conf = float(fused_probs[fused_idx])
                 uncertainty = compute_uncertainty_metrics(fused_probs)
-
-                emotion_counts[fused_emo] += 1
-
-                # Modality contribution weights
-                w_t = 0.40 * text_conf
-                w_a = 0.30 * acoustic_conf
-                w_v = 0.30 * visual_conf
-                w_tot = (w_t + w_a + w_v) or 1.0
-
-                dominant_modality = "Linguistic (Text)"
-                if w_a > w_t and w_a >= w_v:
-                    dominant_modality = "Acoustic (Audio)"
-                elif w_v > w_t and w_v > w_a:
-                    dominant_modality = "Visual (Video Face)"
-
+                fused_color = EMOTION_COLORS.get(fused_emo, UNKNOWN_COLOR)
                 fused_valence = EMOTION_VALENCE.get(fused_emo, 0.0)
                 fused_arousal = round(float(np.clip(0.5 + 0.35 * (fused_conf - 0.5) + (0.2 if fused_emo in ["anger", "surprise", "fear", "joy"] else -0.2), 0.1, 0.98)), 2)
+
+                text_emo = text_analysis["primary_prediction"] if text_analysis else UNKNOWN_EMOTION
+                text_conf = text_analysis["primary_confidence"] if text_analysis else 0.0
+                approach_a = text_analysis["approach_a"] if text_analysis else {}
+                approach_b = text_analysis["approach_b"] if text_analysis else {}
+                acoustic_emo = acoustic_res["predicted_emotion"]
+                acoustic_conf = acoustic_res["confidence"]
+                visual_emo = visual_res["predicted_emotion"]
+                visual_conf = visual_res["confidence"]
+                prosody = acoustic_res["prosody"] or {}
 
                 timeline_segment = {
                     "segment_id": idx + 1,
@@ -224,65 +249,62 @@ class MultilingualVideoAnalyzer:
                     "fused_confidence_pct": round(fused_conf * 100.0, 1),
                     "fused_prediction": {
                         "predicted_emotion": fused_emo,
-                        "emotion_color": EMOTION_COLORS.get(fused_emo, "#94a3b8"),
+                        "emotion_color": fused_color,
                         "confidence_pct": round(fused_conf * 100.0, 1),
                         "valence": fused_valence,
                         "arousal": fused_arousal,
                     },
                     "valence": fused_valence,
-                    "color": EMOTION_COLORS.get(fused_emo, "#94a3b8"),
+                    "color": fused_color,
                     "modality_predictions": {
                         "text": {
                             "predicted_emotion": text_emo,
                             "confidence": round(text_conf, 4),
                             "confidence_pct": round(text_conf * 100.0, 1),
-                            "approach_a_multilingual": text_analysis["approach_a"]["predicted_emotion"],
-                            "approach_b_translated": text_analysis["approach_b"].get("predicted_emotion", text_emo),
+                            "approach_a_multilingual": approach_a.get("predicted_emotion", text_emo),
+                            "approach_b_translated": approach_b.get("predicted_emotion", text_emo),
                         },
                         "audio": {
                             "predicted_emotion": acoustic_emo,
                             "confidence": round(acoustic_conf, 4),
                             "confidence_pct": round(acoustic_conf * 100.0, 1),
-                            "pitch_hz": acoustic_res.get("prosody", {}).get("pitch_hz", 160.0),
-                            "rms_energy": acoustic_res.get("prosody", {}).get("rms_energy", 0.05),
+                            "pitch_hz": prosody.get("pitch_hz"),
+                            "rms_energy": prosody.get("rms_energy"),
                         },
                         "acoustic": {
                             "emotion": acoustic_emo,
                             "confidence": round(acoustic_conf, 4),
                             "predicted_emotion": acoustic_emo,
                             "confidence_pct": round(acoustic_conf * 100.0, 1),
-                            "pitch_hz": acoustic_res.get("prosody", {}).get("pitch_hz", 160.0),
-                            "rms_energy": acoustic_res.get("prosody", {}).get("rms_energy", 0.05),
+                            "pitch_hz": prosody.get("pitch_hz"),
+                            "rms_energy": prosody.get("rms_energy"),
                         },
                         "visual": {
                             "predicted_emotion": visual_emo,
                             "confidence": round(visual_conf, 4),
                             "confidence_pct": round(visual_conf * 100.0, 1),
-                            "gradcam_available": True,
-                            "gradcam_url": visual_res.get("gradcam_base64"),
+                            "gradcam_available": visual_res["gradcam_base64"] is not None,
+                            "gradcam_url": visual_res["gradcam_base64"],
+                            "faces_detected": visual_res["faces_detected"],
+                            "frames_sampled": visual_res["frames_sampled"],
                         },
                     },
-                    "modality_contributions": {
-                        "text_pct": round((w_t / w_tot) * 100.0, 1),
-                        "audio_pct": round((w_a / w_tot) * 100.0, 1),
-                        "video_pct": round((w_v / w_tot) * 100.0, 1),
-                        "dominant_modality": dominant_modality,
-                    },
+                    "modality_contributions": contributions,
                     "uncertainty": uncertainty,
-                    "explanation": f"Real neural multimodal attention prioritized {dominant_modality} with {fused_emo.upper()} prediction ({round(fused_conf * 100.0, 1)}% confidence).",
+                    "explanation": explanation,
                     "text_details": {
                         "approach_a": {
-                            "predicted_emotion": text_analysis["approach_a"]["predicted_emotion"],
-                            "confidence": text_analysis["approach_a"]["confidence"],
+                            "predicted_emotion": approach_a.get("predicted_emotion", text_emo),
+                            "confidence": approach_a.get("confidence", 0.0),
                         },
                         "approach_b": {
-                            "predicted_emotion": text_analysis["approach_b"].get("predicted_emotion", text_emo),
-                            "confidence": text_analysis["approach_b"].get("confidence", text_conf),
+                            "predicted_emotion": approach_b.get("predicted_emotion", text_emo),
+                            "confidence": approach_b.get("confidence", text_conf),
                         },
-                        "token_attributions": text_analysis["approach_a"].get("token_attributions", [])[:5],
+                        "token_attributions": approach_a.get("token_attributions", [])[:5],
                     },
                     "visual_gradcam_image": visual_res.get("gradcam_base64"),
-                    "acoustic_prosody": acoustic_res.get("prosody"),
+                    "acoustic_prosody": acoustic_res["prosody"],
                 }
                 timeline.append(timeline_segment)
 
@@ -312,14 +334,21 @@ class MultilingualVideoAnalyzer:
             }
 
             dominant_emotion = max(emotion_counts, key=lambda k: emotion_counts[k])
-            avg_val = round(float(np.mean([s["fused_prediction"]["valence"] for s in timeline])), 2) if timeline else 0.0
-            avg_aro = round(float(np.mean([s["fused_prediction"]["arousal"] for s in timeline])), 2) if timeline else 0.5
+            top_count = emotion_counts[dominant_emotion]
+            if top_count == 0:
+                dominant_emotion = UNKNOWN_EMOTION
+            elif sum(count == top_count for count in emotion_counts.values()) > 1:
+                dominant_emotion = "mixed"
+            scored = [s for s in timeline if s["fused_emotion"] != UNKNOWN_EMOTION]
+            avg_val = round(float(np.mean([s["fused_prediction"]["valence"] for s in scored])), 2) if scored else 0.0
+            avg_aro = round(float(np.mean([s["fused_prediction"]["arousal"] for s in scored])), 2) if scored else 0.0
             trans_list = [s["fused_prediction"]["predicted_emotion"] for s in timeline]
 
             return {
                 "status": "success",
                 "is_live_inference": True,
-                "inference_source": "live_deep_learning_pipeline",
+                "inference_source": "pretrained_model_pipeline",
+                "models": MODEL_INFO,
                 "filename": filename,
                 "video_metadata": video_meta,
                 "scene_metadata": {
@@ -341,7 +370,7 @@ class MultilingualVideoAnalyzer:
                     "total_segments": len(timeline),
                     "total_duration_sec": round(total_duration, 2),
                     "dominant_emotion": dominant_emotion,
-                    "dominant_emotion_color": EMOTION_COLORS.get(dominant_emotion, "#94a3b8"),
+                    "dominant_emotion_color": EMOTION_COLORS.get(dominant_emotion, UNKNOWN_COLOR),
                     "average_valence": avg_val,
                     "average_arousal": avg_aro,
                     "emotion_transitions": trans_list,
@@ -409,68 +438,73 @@ class MultilingualVideoAnalyzer:
         return meta
 
     @classmethod
-    def _extract_segment_visual(cls, video_path: str, start_sec: float, end_sec: float, seg_idx: int) -> Dict[str, Any]:
-        """Extracts representative frame, generates Grad-CAM heatmap, and predicts visual emotion."""
-        rng = np.random.RandomState(abs(hash(f"{video_path}_{seg_idx}_{start_sec}")) % (2**31 - 1))
-        lead_frame = None
+    def _extract_segment_visual(cls, video_path: str, start_sec: float, end_sec: float, sampling_sec: float) -> Dict[str, Any]:
+        """Runs the face emotion model on frames sampled across a time window."""
+        duration = max(0.0, end_sec - start_sec)
+        count = int(np.clip(round(duration / max(0.25, sampling_sec)), 1, MAX_FRAMES_PER_SEGMENT))
+        timestamps = np.linspace(start_sec, end_sec, count + 2)[1:-1]
 
-        try:
-            cap = cv2.VideoCapture(video_path)
-            fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
-            target_frame_idx = int(((start_sec + end_sec) / 2.0) * fps)
-            cap.set(cv2.CAP_PROP_POS_FRAMES, max(0, target_frame_idx))
-            ret, frame = cap.read()
-            if ret and frame is not None:
-                lead_frame = cv2.resize(frame, (224, 224))
-            cap.release()
-        except Exception:
-            pass
+        crops = []
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+        frames_read = 0
+        if fps > 0:
+            for timestamp in timestamps:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, int(timestamp * fps))
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    continue
+                frames_read += 1
+                crop = FaceEmotionModel.detect_largest_face(frame)
+                if crop is not None:
+                    crops.append(crop)
+        cap.release()
 
-        if lead_frame is None:
-            lead_frame = np.zeros((224, 224, 3), dtype=np.uint8)
-            lead_frame[:, :] = [30, 36, 42]
-            cv2.circle(lead_frame, (112, 105), 55, (170, 185, 205), -1)
-            cv2.circle(lead_frame, (95, 95), 8, (40, 45, 55), -1)
-            cv2.circle(lead_frame, (129, 95), 8, (40, 45, 55), -1)
-            cv2.ellipse(lead_frame, (112, 125), (20, 10), 0, 0, 180, (40, 45, 55), 3)
+        if not crops:
+            return {
+                "probabilities": None,
+                "predicted_emotion": UNKNOWN_EMOTION,
+                "confidence": 0.0,
+                "gradcam_base64": None,
+                "faces_detected": 0,
+                "frames_sampled": frames_read,
+            }
 
-        # Grad-CAM heatmap over facial coordinates
-        y, x = np.ogrid[:224, :224]
-        cam = np.exp(-((x - 112)**2 + (y - 105)**2) / (2 * 42**2))
-        cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-9)
-        cam_uint8 = np.uint8(255 * cam)
-        heatmap = cv2.applyColorMap(cam_uint8, cv2.COLORMAP_JET)
-        overlay = cv2.addWeighted(lead_frame, 0.6, heatmap, 0.4, 0)
-
-        _, buf = cv2.imencode(".png", overlay)
-        gradcam_b64 = f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
-
-        # Visual emotion classification
-        probs = rng.dirichlet(np.array([2.0, 1.0, 0.8, 1.0, 1.5, 0.7, 1.2]))
+        rows = FaceEmotionModel.predict_crops(crops)
+        probs = rows.mean(axis=0)
         pred_idx = int(np.argmax(probs))
-
+        emotion = EMOTION_NAMES[pred_idx]
         return {
-            "predicted_emotion": EMOTION_NAMES[pred_idx],
+            "probabilities": probs,
+            "predicted_emotion": emotion,
             "confidence": round(float(probs[pred_idx]), 4),
-            "gradcam_base64": gradcam_b64,
+            "gradcam_base64": FaceEmotionModel.gradcam(crops[int(np.argmax(rows[:, pred_idx]))], emotion),
+            "faces_detected": len(crops),
+            "frames_sampled": frames_read,
         }
 
     @classmethod
-    def _extract_segment_acoustic(cls, audio_path: str, start_sec: float, end_sec: float, seg_idx: int) -> Dict[str, Any]:
-        """Computes acoustic features and prosody for the time segment."""
-        rng = np.random.RandomState(abs(hash(f"{audio_path}_{seg_idx}_{end_sec}")) % (2**31 - 1))
-        probs = rng.dirichlet(np.array([2.5, 0.9, 0.7, 1.2, 1.8, 0.6, 1.1]))
+    def _extract_segment_acoustic(
+        cls, wave_data: Optional[np.ndarray], start_sec: float, end_sec: float, speech_present: bool
+    ) -> Dict[str, Any]:
+        """Runs the voice emotion model and measures prosody for a time window."""
+        window = None
+        if wave_data is not None:
+            window = wave_data[int(start_sec * SAMPLE_RATE): int(end_sec * SAMPLE_RATE)]
+
+        probs = VoiceEmotionModel.predict(window) if speech_present else None
+        if probs is None:
+            return {
+                "probabilities": None,
+                "predicted_emotion": UNKNOWN_EMOTION,
+                "confidence": 0.0,
+                "prosody": compute_prosody(window),
+            }
+
         pred_idx = int(np.argmax(probs))
-
-        prosody = {
-            "pitch_hz": round(150.0 + rng.uniform(0, 80), 1),
-            "rms_energy": round(0.04 + rng.uniform(0.01, 0.05), 3),
-            "speaking_rate_syllables_per_sec": round(3.5 + rng.uniform(0, 2), 1),
-        }
-
         return {
+            "probabilities": probs,
             "predicted_emotion": EMOTION_NAMES[pred_idx],
             "confidence": round(float(probs[pred_idx]), 4),
-            "prosody": prosody,
+            "prosody": compute_prosody(window),
         }
-

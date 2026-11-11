@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { MOTION_OK, ScrollTrigger, gsap, useGSAP } from './lib/gsap';
 import Navigation from './components/Navigation';
 import LandingHero from './components/LandingHero';
 import SceneDiscovery from './components/SceneDiscovery';
@@ -11,7 +12,55 @@ import ExplainabilitySuite from './components/ExplainabilitySuite';
 import MultilingualTranscript from './components/MultilingualTranscript';
 import EvaluationReport from './components/EvaluationReport';
 
-// Comprehensive multi-scene analyses for instant cinematic exploration
+const HISTORY_KEY = 'cinemaai.history.v1';
+const MAX_HISTORY = 12;
+
+// Keeps only what the home page cards need from a full analysis
+function summarizeAnalysis(data, extra) {
+  const segments = data.segments || [];
+  return {
+    ...extra,
+    dominant: data.scene_summary?.dominant_emotion || 'unknown',
+    strip: segments.map((seg) => [seg.fused_prediction.predicted_emotion, seg.end_time_sec - seg.start_time_sec]),
+    segments: segments.length,
+    duration: data.scene_metadata?.duration_sec || 0,
+    language: data.scene_metadata?.detected_language || '',
+    date: new Date().toISOString(),
+  };
+}
+
+// Grabs one small frame from an uploaded video to use as its card image
+function captureFrame(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const video = document.createElement('video');
+    const done = (value) => {
+      video.removeAttribute('src');
+      resolve(value);
+    };
+    video.muted = true;
+    video.preload = 'auto';
+    video.src = url;
+    video.addEventListener('loadeddata', () => {
+      video.currentTime = Math.min(1, (video.duration || 2) / 2);
+    });
+    video.addEventListener('seeked', () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 480;
+        canvas.height = Math.round((480 * video.videoHeight) / (video.videoWidth || 480)) || 270;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        done(canvas.toDataURL('image/jpeg', 0.72));
+      } catch {
+        done(null);
+      }
+    });
+    video.addEventListener('error', () => done(null));
+    setTimeout(() => done(null), 4000);
+  });
+}
+
+// Hand-written sample scenes. These are scripted examples, not model output.
 const CURATED_SCENE_ANALYSES = {
   ml: {
     status: 'success',
@@ -604,7 +653,7 @@ export default function Home() {
   const [videoFile, setVideoFile] = useState(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const [selectedScene, setSelectedScene] = useState(null);
-  const [selectedYouTubeUrl, setSelectedYouTubeUrl] = useState('https://www.youtube.com/watch?v=yM3kO4_88Q8');
+  const [selectedYouTubeUrl, setSelectedYouTubeUrl] = useState('');
   const [samplingInterval, setSamplingInterval] = useState('1.0');
   const [segmentDuration, setSegmentDuration] = useState('3.0');
   const [language, setLanguage] = useState('auto');
@@ -622,13 +671,74 @@ export default function Home() {
 
   // Benchmark Data
   const [benchmarkData, setBenchmarkData] = useState([]);
+  const mainRef = useRef(null);
+  const [history, setHistory] = useState([]);
+  const [featuredScenes, setFeaturedScenes] = useState([]);
+
+  // Recent analyses are kept in this browser only
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(HISTORY_KEY) || '[]');
+      // Browser storage only exists after mount, so this cannot be the initial state
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (Array.isArray(saved)) setHistory(saved);
+    } catch {
+      // Storage can be unavailable, for example in private windows
+    }
+  }, []);
+
+  const rememberAnalysis = (item) => {
+    setHistory((current) => {
+      const next = [item, ...current.filter((entry) => entry.key !== item.key)].slice(0, MAX_HISTORY);
+      try {
+        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // Keep the in-memory list even if it cannot be saved
+      }
+      return next;
+    });
+  };
+  const isFirstScreen = useRef(true);
+
+  // Screen change transition
+  useGSAP(
+    () => {
+      window.scrollTo(0, 0);
+      if (isFirstScreen.current) {
+        isFirstScreen.current = false;
+        return undefined;
+      }
+      const mm = gsap.matchMedia();
+      mm.add(MOTION_OK, () => {
+        gsap.fromTo(
+          mainRef.current.children,
+          { autoAlpha: 0, y: 16 },
+          { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power3.out', clearProps: 'transform,opacity,visibility' }
+        );
+      });
+      ScrollTrigger.refresh();
+      return () => mm.revert();
+    },
+    { dependencies: [activeScreen] }
+  );
 
   // Load initial health, featured scenes & benchmark data on mount
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => res.json())
-      .then((data) => setApiHealth(data))
-      .catch(() => setApiHealth({ status: 'offline', models_loaded: false }));
+    // The backend can take a while to start, so keep checking until it answers
+    let healthTimer;
+    const checkHealth = () => {
+      fetch('/api/health')
+        .then((res) => {
+          if (!res.ok) throw new Error('Backend not ready');
+          return res.json();
+        })
+        .then((data) => setApiHealth(data))
+        .catch(() => {
+          setApiHealth({ status: 'offline', models_loaded: false });
+          healthTimer = setTimeout(checkHealth, 3000);
+        });
+    };
+    checkHealth();
 
     fetch('/api/benchmark')
       .then((res) => res.json())
@@ -639,6 +749,7 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         if (data.featured) {
+          setFeaturedScenes(Object.values(data.featured).flat());
           setSceneResults(data.featured);
           setSearchMeta({
             query_used: 'Featured Movie Scenes (Multilingual)',
@@ -648,6 +759,8 @@ export default function Home() {
         }
       })
       .catch(() => {});
+
+    return () => clearTimeout(healthTimer);
   }, []);
 
   // Cleanup object URL on unmount
@@ -732,10 +845,10 @@ export default function Home() {
           setAnalysisStage('[Phase 3/5] Faster-Whisper multilingual speech-to-text...');
           return prev + 3;
         } else if (prev < 88) {
-          setAnalysisStage('[Phase 4/5] ResNet-18 facial Grad-CAM saliency heatmaps...');
+          setAnalysisStage('[Phase 4/5] Detecting faces and scoring expressions...');
           return prev + 2;
         } else if (prev < 96) {
-          setAnalysisStage('[Phase 5/5] Dynamic cross-modal attention gating...');
+          setAnalysisStage('[Phase 5/5] Fusing text, voice and face predictions...');
           return prev + 1;
         }
         return prev;
@@ -783,7 +896,7 @@ export default function Home() {
 
       const data = await res.json();
       setAnalysisProgress(100);
-      setAnalysisStage('✓ Neural Pipeline Complete! Finalizing timeline...');
+      setAnalysisStage('✓ Analysis complete. Finalizing timeline...');
 
       if (data.video_stream_url) {
         setVideoPreviewUrl(data.video_stream_url);
@@ -793,167 +906,23 @@ export default function Home() {
 
       setClipResult(data);
       setActiveSegmentIndex(0);
+      if (data.video_id) {
+        rememberAnalysis(
+          summarizeAnalysis(data, {
+            key: `youtube:${data.video_id}`,
+            kind: 'youtube',
+            videoId: data.video_id,
+            title: data.title || sceneData?.title || `YouTube clip ${data.video_id}`,
+            thumb: `https://i.ytimg.com/vi/${data.video_id}/hqdefault.jpg`,
+          })
+        );
+      }
 
       setTimeout(() => {
         setActiveScreen('dashboard');
       }, 500);
     } catch (err) {
-      console.warn('Backend neural stream note:', err);
-      // Clean video ID
-      const cleanMatch = urlOrId.match(/(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/watch\?v=|\&v=|^)([A-Za-z0-9_-]{11})/);
-      const cleanId = cleanMatch ? cleanMatch[1] : (urlOrId.length === 11 ? urlOrId : 'v77IOwXg3B4');
-      const movieTitle = sceneData?.movie_name || sceneData?.title || `Scene Clip (${cleanId})`;
-
-      // Dynamic scene representation respecting user's selected movie
-      const dynamicFallback = {
-        status: 'success',
-        is_live_inference: false,
-        inference_source: 'dynamic_scene_neural_pipeline',
-        video_id: cleanId,
-        embed_url: sceneData?.embed_url || `https://www.youtube.com/embed/${cleanId}`,
-        thumbnail_url: sceneData?.thumbnail_url || `https://img.youtube.com/vi/${cleanId}/hqdefault.jpg`,
-        scene_metadata: {
-          filename: sceneData?.title || movieTitle,
-          duration_sec: 14.0,
-          fps: 25.0,
-          total_frames_sampled: 14,
-          audio_extracted: true,
-          detected_language: sceneData?.language_name || 'Multilingual',
-          language_code: sceneData?.language_code || 'en',
-        },
-        scene_summary: {
-          dominant_emotion: sceneData?.emotion_tag || 'anger',
-          dominant_emotion_color: '#fafafa',
-          total_segments: 4,
-          average_valence: -0.65,
-          average_arousal: 0.82,
-          emotion_transitions: ['neutral', 'surprise', sceneData?.emotion_tag || 'anger', sceneData?.emotion_tag || 'anger'],
-          emotion_distribution: {
-            anger: { count: 2, percentage: 50.0, color: '#fafafa' },
-            surprise: { count: 1, percentage: 25.0, color: '#d4d4d8' },
-            neutral: { count: 1, percentage: 25.0, color: '#a1a1aa' },
-            joy: { count: 0, percentage: 0.0, color: '#71717a' },
-            sadness: { count: 0, percentage: 0.0, color: '#71717a' },
-            fear: { count: 0, percentage: 0.0, color: '#71717a' },
-            disgust: { count: 0, percentage: 0.0, color: '#71717a' },
-          },
-        },
-        segments: [
-          {
-            segment_index: 0,
-            start_time_sec: 0.0,
-            end_time_sec: 3.5,
-            timestamp_label: '00:00 - 00:03.5',
-            transcript: {
-              original_text: `Scene introduction and conversational exchange in ${movieTitle}.`,
-              language: sceneData?.language_name || 'English',
-              language_code: sceneData?.language_code || 'en',
-              translated_text: `Scene introduction and conversational exchange in ${movieTitle}.`,
-            },
-            fused_prediction: {
-              predicted_emotion: 'neutral',
-              emotion_color: '#a1a1aa',
-              confidence_pct: 82.5,
-              valence: 0.05,
-              arousal: 0.25,
-            },
-            modality_contributions: { text_pct: 38.0, audio_pct: 32.0, video_pct: 30.0, dominant_modality: 'Linguistic (Text)' },
-            modality_predictions: {
-              text: { predicted_emotion: 'neutral', confidence_pct: 81.0, approach_a_multilingual: 'neutral', approach_b_translated: 'neutral' },
-              audio: { predicted_emotion: 'neutral', confidence_pct: 78.0, pitch_hz: 145.0, rms_energy: 0.038 },
-              visual: { predicted_emotion: 'neutral', confidence_pct: 84.0, gradcam_available: true },
-            },
-            explanation: `Baseline conversational opening identified for ${movieTitle}.`,
-          },
-          {
-            segment_index: 1,
-            start_time_sec: 3.5,
-            end_time_sec: 7.0,
-            timestamp_label: '00:03.5 - 00:07.0',
-            transcript: {
-              original_text: `Unexpected escalation occurs as characters confront the situation in ${movieTitle}.`,
-              language: sceneData?.language_name || 'English',
-              language_code: sceneData?.language_code || 'en',
-              translated_text: `Unexpected escalation occurs as characters confront the situation in ${movieTitle}.`,
-            },
-            fused_prediction: {
-              predicted_emotion: 'surprise',
-              emotion_color: '#d4d4d8',
-              confidence_pct: 88.0,
-              valence: 0.35,
-              arousal: 0.80,
-            },
-            modality_contributions: { text_pct: 36.0, audio_pct: 34.0, video_pct: 30.0, dominant_modality: 'Multimodal Fusion' },
-            modality_predictions: {
-              text: { predicted_emotion: 'surprise', confidence_pct: 86.0, approach_a_multilingual: 'surprise', approach_b_translated: 'surprise' },
-              audio: { predicted_emotion: 'surprise', confidence_pct: 84.0, pitch_hz: 230.0, rms_energy: 0.082 },
-              visual: { predicted_emotion: 'surprise', confidence_pct: 89.0, gradcam_available: true },
-            },
-            explanation: `Dramatic surprise cues detected across acoustic pitch elevation and linguistic tension markers.`,
-          },
-          {
-            segment_index: 2,
-            start_time_sec: 7.0,
-            end_time_sec: 10.5,
-            timestamp_label: '00:07.0 - 00:10.5',
-            transcript: {
-              original_text: `Climactic turn where ${sceneData?.character || 'the protagonist'} delivers a decisive emotional statement.`,
-              language: sceneData?.language_name || 'English',
-              language_code: sceneData?.language_code || 'en',
-              translated_text: `Climactic turn where ${sceneData?.character || 'the protagonist'} delivers a decisive emotional statement.`,
-            },
-            fused_prediction: {
-              predicted_emotion: sceneData?.emotion_tag || 'anger',
-              emotion_color: '#fafafa',
-              confidence_pct: 91.5,
-              valence: -0.72,
-              arousal: 0.88,
-            },
-            modality_contributions: { text_pct: 40.0, audio_pct: 35.0, video_pct: 25.0, dominant_modality: 'Acoustic & Semantic Fusion' },
-            modality_predictions: {
-              text: { predicted_emotion: sceneData?.emotion_tag || 'anger', confidence_pct: 90.0, approach_a_multilingual: sceneData?.emotion_tag || 'anger', approach_b_translated: sceneData?.emotion_tag || 'anger' },
-              audio: { predicted_emotion: sceneData?.emotion_tag || 'anger', confidence_pct: 89.0, pitch_hz: 255.0, rms_energy: 0.108 },
-              visual: { predicted_emotion: sceneData?.emotion_tag || 'anger', confidence_pct: 88.0, gradcam_available: true },
-            },
-            explanation: `Intense emotional convergence matching the scene's primary dramatic conflict in ${movieTitle}.`,
-          },
-          {
-            segment_index: 3,
-            start_time_sec: 10.5,
-            end_time_sec: 14.0,
-            timestamp_label: '00:10.5 - 00:14.0',
-            transcript: {
-              original_text: `Resolution beat lingering on the immediate aftermath of the confrontation.`,
-              language: sceneData?.language_name || 'English',
-              language_code: sceneData?.language_code || 'en',
-              translated_text: `Resolution beat lingering on the immediate aftermath of the confrontation.`,
-            },
-            fused_prediction: {
-              predicted_emotion: sceneData?.emotion_tag || 'anger',
-              emotion_color: '#fafafa',
-              confidence_pct: 86.0,
-              valence: -0.65,
-              arousal: 0.78,
-            },
-            modality_contributions: { text_pct: 35.0, audio_pct: 35.0, video_pct: 30.0, dominant_modality: 'Multimodal Gated Fusion' },
-            modality_predictions: {
-              text: { predicted_emotion: sceneData?.emotion_tag || 'anger', confidence_pct: 85.0, approach_a_multilingual: sceneData?.emotion_tag || 'anger', approach_b_translated: sceneData?.emotion_tag || 'anger' },
-              audio: { predicted_emotion: sceneData?.emotion_tag || 'anger', confidence_pct: 84.0, pitch_hz: 220.0, rms_energy: 0.085 },
-              visual: { predicted_emotion: sceneData?.emotion_tag || 'anger', confidence_pct: 85.0, gradcam_available: true },
-            },
-            explanation: `Lingering emotional intensity tracked into the closing timecode of the scene.`,
-          },
-        ],
-      };
-
-      setAnalysisProgress(100);
-      setAnalysisStage('✓ Scene Analysis Ready!');
-      setVideoPreviewUrl(null);
-      setClipResult(dynamicFallback);
-      setActiveSegmentIndex(0);
-      setTimeout(() => {
-        setActiveScreen('dashboard');
-      }, 500);
+      setErrorMessage(err.message || 'YouTube video analysis failed.');
     } finally {
       clearInterval(progressTimer);
       setIsAnalyzing(false);
@@ -964,7 +933,7 @@ export default function Home() {
   // Full-Clip Neural Analysis Handler for uploaded file
   const handleAnalyzeVideo = async () => {
     if (!videoFile) {
-      handleLoadDemo('ml');
+      setErrorMessage('Choose a video file first.');
       return;
     }
 
@@ -997,18 +966,24 @@ export default function Home() {
 
       const data = await res.json();
       setAnalysisProgress(100);
-      setAnalysisStage('✓ Neural Pipeline Complete! Finalizing timeline...');
+      setAnalysisStage('✓ Analysis complete. Finalizing timeline...');
 
       setClipResult(data);
       setActiveSegmentIndex(0);
+      rememberAnalysis(
+        summarizeAnalysis(data, {
+          key: `upload:${videoFile.name}:${videoFile.size}`,
+          kind: 'upload',
+          title: videoFile.name.replace(/\.[^.]+$/, ''),
+          thumb: await captureFrame(videoPreviewUrl),
+        })
+      );
 
       setTimeout(() => {
         setActiveScreen('dashboard');
       }, 500);
     } catch (err) {
-      console.warn('Video analysis error, loading calibrated demonstration:', err);
-      const langKey = language !== 'auto' ? language : 'ml';
-      handleLoadDemo(langKey);
+      setErrorMessage(err.message || 'Video analysis failed.');
     } finally {
       clearInterval(progressTimer);
       setIsAnalyzing(false);
@@ -1023,6 +998,23 @@ export default function Home() {
     setActiveScreen('dashboard');
   };
 
+  // Reopening a recent analysis: YouTube clips are cached, so they re-run quickly
+  const handleOpenHistory = (item) => {
+    setActiveScreen('upload');
+    if (item.kind === 'youtube') {
+      setSelectedScene(null);
+      setSelectedYouTubeUrl(`https://www.youtube.com/watch?v=${item.videoId}`);
+      handleAnalyzeYouTube(item.videoId);
+    } else {
+      setErrorMessage(`To reopen "${item.title}", upload the file again.`);
+    }
+  };
+
+  const handleOpenScene = (scene) => {
+    setActiveScreen('upload');
+    handleSelectSceneForAnalysis(scene);
+  };
+
   // When clicking "Analyze ➔" or previewing ANY discovered scene card:
   const handleSelectSceneForAnalysis = (scene, triggerAnalysis = true) => {
     setSelectedScene(scene);
@@ -1034,49 +1026,27 @@ export default function Home() {
       }
     } else {
       if (triggerAnalysis) {
-        handleLoadDemo(scene?.language_code || scene?.language || 'ta');
+        setErrorMessage('This scene has no video link to analyze.');
       }
     }
   };
 
   return (
-    <main style={{ maxWidth: '1440px', margin: '0 auto', padding: '24px 20px' }}>
-      {/* Studio Workstation Header Navigation */}
+    <div className="app-shell">
       <Navigation
         activeScreen={activeScreen}
         setActiveScreen={setActiveScreen}
         apiHealth={apiHealth}
+        resultEmotion={clipResult?.scene_summary?.dominant_emotion}
       />
+
+      <main ref={mainRef} className={`app-content ${activeScreen === 'landing' ? 'is-home' : ''}`}>
 
       {/* Global Error Notification */}
       {errorMessage && (
-        <div
-          style={{
-            background: '#18181b',
-            border: '1px solid #3f3f46',
-            color: '#f4f4f5',
-            padding: '12px 18px',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontSize: '0.88rem',
-          }}
-        >
+        <div className="alert" role="alert">
           <span>{errorMessage}</span>
-          <button
-            onClick={() => setErrorMessage(null)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#a1a1aa',
-              cursor: 'pointer',
-              fontSize: '1rem',
-            }}
-          >
-            ✕
-          </button>
+          <button onClick={() => setErrorMessage(null)} aria-label="Dismiss">✕</button>
         </div>
       )}
 
@@ -1084,7 +1054,13 @@ export default function Home() {
       {/* SCREEN 1: LANDING OVERVIEW                                */}
       {/* ========================================================= */}
       {activeScreen === 'landing' && (
-        <LandingHero onNavigate={(screen) => setActiveScreen(screen)} />
+        <LandingHero
+          onNavigate={(screen) => setActiveScreen(screen)}
+          history={history}
+          scenes={featuredScenes}
+          onOpenHistory={handleOpenHistory}
+          onOpenScene={handleOpenScene}
+        />
       )}
 
       {/* ========================================================= */}
@@ -1149,6 +1125,7 @@ export default function Home() {
             setActiveScreen('segment');
           }}
           onTimeUpdate={handleTimeUpdate}
+          onNewAnalysis={() => setActiveScreen('upload')}
         />
       )}
 
@@ -1161,6 +1138,7 @@ export default function Home() {
           activeSegmentIndex={activeSegmentIndex}
           setActiveSegmentIndex={setActiveSegmentIndex}
           onSeekToSegment={handleSeekToSegment}
+          onNewAnalysis={() => setActiveScreen('upload')}
         />
       )}
 
@@ -1191,6 +1169,7 @@ export default function Home() {
       {activeScreen === 'evaluation' && (
         <EvaluationReport benchmarkData={benchmarkData} />
       )}
-    </main>
+      </main>
+    </div>
   );
 }

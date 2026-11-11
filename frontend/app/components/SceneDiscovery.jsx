@@ -52,15 +52,13 @@ export default function SceneDiscovery({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#f4f4f5' }}>
-                SerpApi Movie Scene Discovery
-              </h2>
+              <h1 className="page-title">Scene discovery</h1>
               <span className="metric-badge">
                 YouTube Index
               </span>
             </div>
-            <p style={{ color: '#71717a', fontSize: '0.85rem', marginTop: '4px' }}>
-              Discover cinematic dialogue scenes across English, Hindi, Malayalam, and Tamil with emotion and context filters.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
+              Search for movie scenes by title, moment, character, language or emotion.
             </p>
           </div>
 
@@ -75,7 +73,7 @@ export default function SceneDiscovery({
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
             <div>
-              <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
                 Movie Title
               </label>
               <input
@@ -88,7 +86,7 @@ export default function SceneDiscovery({
             </div>
 
             <div>
-              <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
                 Scene Description
               </label>
               <input
@@ -101,7 +99,7 @@ export default function SceneDiscovery({
             </div>
 
             <div>
-              <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
                 Character Name
               </label>
               <input
@@ -114,7 +112,7 @@ export default function SceneDiscovery({
             </div>
 
             <div>
-              <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
                 Language
               </label>
               <select className="cinema-select" value={language} onChange={(e) => setLanguage(e.target.value)}>
@@ -127,7 +125,7 @@ export default function SceneDiscovery({
             </div>
 
             <div>
-              <label style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
+              <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', display: 'block', marginBottom: '5px' }}>
                 Emotion Filter
               </label>
               <select className="cinema-select" value={emotion} onChange={(e) => setEmotion(e.target.value)}>
@@ -146,7 +144,7 @@ export default function SceneDiscovery({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             {/* Quick Presets */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.74rem', color: '#71717a', fontWeight: '600' }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: '600' }}>
                 PRESETS:
               </span>
               <button
@@ -194,13 +192,20 @@ export default function SceneDiscovery({
           </div>
         </form>
       </div>
+      {searchMeta?.source === 'curated_mock_catalogue' && (
+        <div className="cinema-card" style={{ padding: '12px 16px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <strong style={{ color: 'var(--warn)', fontWeight: 600 }}>Sample list, not live search.</strong>{' '}
+          Add a SerpApi key to the .env file for real results. Many sample links no longer work, so paste your own link in New Analysis.
+        </div>
+      )}
+
 
       {/* Structured Search Results Grid */}
       {sceneResults.length > 0 ? (
         <div className="youtube-discovery-grid">
           {sceneResults.map((scene, idx) => (
             <div key={idx} className="cinema-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000000', borderBottom: '1px solid #27272a' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000000', borderBottom: '1px solid var(--line)' }}>
                 <img
                   src={scene.thumbnail_url}
                   alt={scene.title}
@@ -214,7 +219,7 @@ export default function SceneDiscovery({
                       bottom: '6px',
                       right: '6px',
                       background: 'rgba(0, 0, 0, 0.85)',
-                      color: '#f4f4f5',
+                      color: 'var(--text-primary)',
                       fontSize: '0.7rem',
                       fontWeight: '600',
                       padding: '2px 6px',
@@ -229,9 +234,9 @@ export default function SceneDiscovery({
                     position: 'absolute',
                     top: '6px',
                     left: '6px',
-                    background: '#121214',
-                    color: '#d4d4d8',
-                    border: '1px solid #27272a',
+                    background: 'var(--surface)',
+                    color: 'var(--text-soft)',
+                    border: '1px solid var(--line)',
                     fontSize: '0.68rem',
                     fontWeight: '600',
                     padding: '2px 6px',
@@ -248,7 +253,7 @@ export default function SceneDiscovery({
                     <span className="metric-badge">
                       {scene.emotion_tag ? scene.emotion_tag.toUpperCase() : 'SCENE'}
                     </span>
-                    <span style={{ fontSize: '0.74rem', color: '#71717a' }}>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                       {scene.channel_name}
                     </span>
                   </div>
@@ -259,7 +264,7 @@ export default function SceneDiscovery({
                       fontWeight: '600',
                       lineHeight: 1.4,
                       marginBottom: '6px',
-                      color: '#f4f4f5',
+                      color: 'var(--text-primary)',
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical',
@@ -273,7 +278,7 @@ export default function SceneDiscovery({
                     <p
                       style={{
                         fontSize: '0.76rem',
-                        color: '#a1a1aa',
+                        color: 'var(--text-secondary)',
                         lineHeight: 1.4,
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -317,10 +322,10 @@ export default function SceneDiscovery({
           ))}
         </div>
       ) : (
-        <div className="cinema-card" style={{ padding: '48px 24px', textAlign: 'center', color: '#71717a' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#f4f4f5' }}>No movie scenes loaded</h3>
+        <div className="cinema-card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>Search to find scenes</h3>
           <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>
-            Run a search with SerpApi or select one of the curated cinematic presets above.
+            Enter a movie or moment above, or pick a preset.
           </p>
         </div>
       )}
@@ -342,7 +347,7 @@ export default function SceneDiscovery({
         >
           <div
             className="cinema-card"
-            style={{ maxWidth: '860px', width: '100%', overflow: 'hidden', background: '#121214' }}
+            style={{ maxWidth: '860px', width: '100%', overflow: 'hidden', background: 'var(--surface)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', background: '#000000' }}>
@@ -358,8 +363,8 @@ export default function SceneDiscovery({
             <div style={{ padding: '18px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '12px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#f4f4f5' }}>{activeIframeScene.title}</h3>
-                  <div style={{ fontSize: '0.78rem', color: '#71717a', marginTop: '4px' }}>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-primary)' }}>{activeIframeScene.title}</h3>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                     Channel: <strong>{activeIframeScene.channel_name}</strong> • Duration: {activeIframeScene.duration || 'N/A'} • Lang: {activeIframeScene.language_code?.toUpperCase()}
                   </div>
                 </div>
@@ -371,12 +376,12 @@ export default function SceneDiscovery({
               {/* Action */}
               <div
                 style={{
-                  background: '#18181b',
-                  border: '1px solid #27272a',
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--line)',
                   borderRadius: 'var(--radius-md)',
                   padding: '12px 16px',
                   fontSize: '0.82rem',
-                  color: '#a1a1aa',
+                  color: 'var(--text-secondary)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',

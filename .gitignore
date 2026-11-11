@@ -46,3 +46,6 @@ data/cached_clips/
 *.wav
 *.aac
 
+# Downloaded pretrained models and cached clips
+.model_cache/
+data/cached_clips/

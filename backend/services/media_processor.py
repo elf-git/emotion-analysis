@@ -1,14 +1,21 @@
 """
-media_processor.py - Safe Media Validation, Feature Extraction & Grad-CAM Visualization
+media_processor.py - Safe Media Validation and Real Voice / Face Emotion Extraction
 Enforces file size limits, safe temp file lifecycles, and formats outputs for frontend consumption.
 """
 import os
-import io
-import base64
 import tempfile
 import logging
+import cv2
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
+
+from ml.pretrained_models import (
+    EMOTION_NAMES,
+    FaceEmotionModel,
+    VoiceEmotionModel,
+    compute_prosody,
+    load_audio,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +50,8 @@ def validate_media_upload(file_bytes: bytes, filename: str, media_type: str) -> 
 
 def process_audio_file(file_bytes: bytes, filename: str, target_dim: int = 256) -> Dict:
     """
-    Safely process audio file bytes to extract acoustic features and prosodic summary.
+    Decodes an audio upload and runs the voice emotion model.
+    feature_vector holds 7-class probabilities, or None when no usable audio exists.
     """
     validate_media_upload(file_bytes, filename, "audio")
     suffix = os.path.splitext(filename)[1]
@@ -53,39 +61,15 @@ def process_audio_file(file_bytes: bytes, filename: str, target_dim: int = 256) 
         tmp_path = tmp.name
 
     try:
-        duration_sec = 0.0
-        pitch_mean = 160.0
-        energy_rms = 0.05
-        zcr = 0.03
-
-        # Acoustic extraction via wave / basic audio info if available
-        try:
-            import wave
-            with wave.open(tmp_path, "rb") as wf:
-                channels = wf.getnchannels()
-                rate = wf.getframerate()
-                frames = wf.getnframes()
-                duration_sec = float(frames) / float(rate)
-        except Exception:
-            duration_sec = round(len(file_bytes) / 32000.0, 2)
-
-        # Generate deterministic acoustic representation from file contents
-        content_hash = abs(hash(file_bytes[:1024])) % (2**31 - 1)
-        rng = np.random.RandomState(content_hash)
-        feature_vector = rng.randn(target_dim).astype(np.float32)
-        feature_vector = feature_vector / (np.linalg.norm(feature_vector) + 1e-9)
-
-        prosody_summary = {
-            "duration_sec": round(max(0.5, duration_sec), 2),
-            "estimated_pitch_hz": round(140.0 + (content_hash % 100), 1),
-            "rms_energy": round(0.04 + ((content_hash % 50) / 1000.0), 3),
-            "voice_activity_ratio": round(0.65 + ((content_hash % 30) / 100.0), 2),
-            "status": "extracted",
-        }
-
+        wave_data = load_audio(tmp_path)
+        prosody = compute_prosody(wave_data)
         return {
-            "feature_vector": feature_vector,
-            "prosody": prosody_summary,
+            "feature_vector": VoiceEmotionModel.predict(wave_data),
+            "prosody": {
+                **(prosody or {}),
+                "duration_sec": round(len(wave_data) / 16000.0, 2) if wave_data is not None else 0.0,
+                "status": "extracted" if prosody else "unavailable",
+            },
         }
 
     finally:
@@ -98,7 +82,8 @@ def process_audio_file(file_bytes: bytes, filename: str, target_dim: int = 256) 
 
 def process_video_file(file_bytes: bytes, filename: str, target_dim: int = 256) -> Dict:
     """
-    Safely extract video frames, compute Grad-CAM facial saliency, and return base64 overlay.
+    Samples frames, finds faces and runs the facial emotion model.
+    feature_vector holds 7-class probabilities, or None when no face is found.
     """
     validate_media_upload(file_bytes, filename, "video")
     suffix = os.path.splitext(filename)[1]
@@ -108,79 +93,36 @@ def process_video_file(file_bytes: bytes, filename: str, target_dim: int = 256) 
         tmp_path = tmp.name
 
     try:
-        frame_count = 0
-        extracted_frames = []
-        fps = 24.0
+        frames = []
+        cap = cv2.VideoCapture(tmp_path)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total_frames > 0:
+            for idx in np.linspace(0, total_frames - 1, min(8, total_frames), dtype=int):
+                cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    frames.append(frame)
+        cap.release()
 
-        try:
-            import cv2
-            cap = cv2.VideoCapture(tmp_path)
-            fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            
-            # Sample up to 8 evenly-spaced frames
-            if total_frames > 0:
-                indices = np.linspace(0, total_frames - 1, min(8, total_frames), dtype=int)
-                for idx in indices:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
-                    ret, frame = cap.read()
-                    if ret and frame is not None:
-                        frame_resized = cv2.resize(frame, (224, 224))
-                        extracted_frames.append(frame_resized)
-            cap.release()
-        except Exception as e:
-            logger.warning(f"OpenCV video frame extraction failed: {e}")
-
-        # If OpenCV failed or empty video, create synthetic facial frame
-        if not extracted_frames:
-            dummy = np.zeros((224, 224, 3), dtype=np.uint8)
-            dummy[:, :] = [30, 36, 42]  # Dark slate background
-            try:
-                import cv2
-                cv2.circle(dummy, (112, 105), 55, (170, 185, 205), -1)
-                cv2.circle(dummy, (95, 95), 8, (40, 45, 55), -1)   # Left eye
-                cv2.circle(dummy, (129, 95), 8, (40, 45, 55), -1)  # Right eye
-                cv2.ellipse(dummy, (112, 125), (20, 10), 0, 0, 180, (40, 45, 55), 3) # Mouth
-            except Exception:
-                pass
-            extracted_frames = [dummy]
-
-        # Generate Grad-CAM heatmap over the face
-        y, x = np.ogrid[:224, :224]
-        cam = np.exp(-((x - 112)**2 + (y - 105)**2) / (2 * 42**2))
-        cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-9)
-
-        # Blend Grad-CAM heatmap onto frame
-        lead_frame = extracted_frames[len(extracted_frames) // 2]
-        try:
-            import cv2
-            cam_uint8 = np.uint8(255 * cam)
-            heatmap = cv2.applyColorMap(cam_uint8, cv2.COLORMAP_JET)
-            overlay = cv2.addWeighted(lead_frame, 0.6, heatmap, 0.4, 0)
-            _, buffer = cv2.imencode(".png", overlay)
-            gradcam_base64 = f"data:image/png;base64,{base64.b64encode(buffer).decode('utf-8')}"
-        except Exception:
-            gradcam_base64 = None
-
-        content_hash = abs(hash(file_bytes[:1024])) % (2**31 - 1)
-        rng = np.random.RandomState(content_hash)
-        feature_vector = rng.randn(target_dim).astype(np.float32)
-        feature_vector = feature_vector / (np.linalg.norm(feature_vector) + 1e-9)
-
-        video_summary = {
-            "frames_analyzed": max(1, len(extracted_frames)),
-            "fps": round(fps, 1),
-            "gradcam_image_url": gradcam_base64,
-            "facial_action_units": {
-                "AU04_brow_lowerer": round(0.2 + (content_hash % 60) / 100.0, 2),
-                "AU12_lip_corner_puller": round(0.1 + (content_hash % 80) / 100.0, 2),
-                "AU25_lips_part": round(0.3 + (content_hash % 50) / 100.0, 2),
-            },
-        }
+        crops = [crop for crop in map(FaceEmotionModel.detect_largest_face, frames) if crop is not None]
+        probabilities = None
+        gradcam_base64 = None
+        if crops:
+            rows = FaceEmotionModel.predict_crops(crops)
+            probabilities = rows.mean(axis=0)
+            emotion = EMOTION_NAMES[int(np.argmax(probabilities))]
+            best = int(np.argmax(rows[:, int(np.argmax(probabilities))]))
+            gradcam_base64 = FaceEmotionModel.gradcam(crops[best], emotion)
 
         return {
-            "feature_vector": feature_vector,
-            "visual_summary": video_summary,
+            "feature_vector": probabilities,
+            "visual_summary": {
+                "frames_analyzed": len(frames),
+                "faces_detected": len(crops),
+                "fps": round(fps, 1),
+                "gradcam_image_url": gradcam_base64,
+            },
         }
 
     finally:

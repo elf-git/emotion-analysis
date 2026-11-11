@@ -166,7 +166,7 @@ class IndicTranslator:
                 "source_language_name": {"hi": "Hindi", "ml": "Malayalam", "ta": "Tamil"}.get(lang, lang),
                 "translated_text": lang_dict[raw_text],
                 "is_translated": True,
-                "service": "IndicTrans2 / Lexicon Neural Cache",
+                "service": "Phrase lexicon (not IndicTrans2)",
                 "translation_confidence": 0.98,
             }
             cls._cache[cache_key] = res
@@ -201,7 +201,7 @@ class IndicTranslator:
                 "source_language_name": {"hi": "Hindi", "ml": "Malayalam", "ta": "Tamil"}.get(lang, lang),
                 "translated_text": translated_sentence,
                 "is_translated": True,
-                "service": "IndicTrans2 / Subword Compositional Translator",
+                "service": "Word lexicon (not IndicTrans2)",
                 "translation_confidence": round(conf, 4),
             }
             cls._cache[cache_key] = res

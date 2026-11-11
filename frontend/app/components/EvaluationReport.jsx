@@ -22,33 +22,43 @@ export default function EvaluationReport({ benchmarkData }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Unverified results warning */}
+      <div className="cinema-card" style={{ padding: '18px 24px', borderColor: 'var(--danger)' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--danger)' }}>
+          These numbers are unverified. Do not present them as results.
+        </h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '6px', lineHeight: 1.5 }}>
+          Every figure on this page is a fixed value from the repository. They do not describe the pretrained models
+          this app runs, and no trained weights exist to reproduce them. The only measured results saved in the repository
+          are 1 to 2 epoch smoke tests, with test accuracy of 31.0% (text), 16.5% (audio) and 26.5% (video).
+        </p>
+      </div>
+
       {/* Header Banner */}
-      <div className="cinema-card" style={{ padding: '24px' }}>
+      <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#f4f4f5' }}>
-                Empirical Evaluation & Modality Ablation Dashboard
-              </h2>
+              <h1 className="page-title">Evaluation</h1>
               <span className="metric-badge">
                 MELD Official Splits (2,610 Utterances)
               </span>
             </div>
-            <p style={{ color: '#71717a', fontSize: '0.85rem', marginTop: '4px' }}>
-              Reproducible empirical evaluation across unimodal baselines, late fusion ensembles, and multilingual benchmarks.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
+              Repository figures for unimodal baselines, late fusion and multilingual benchmarks. Unverified.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '20px' }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.72rem', color: '#71717a' }}>Top Weighted F1</div>
-              <div className="font-mono" style={{ fontSize: '1.15rem', fontWeight: '700', color: '#f4f4f5' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Claimed Top F1 (Unverified)</div>
+              <div className="font-mono" style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                 94.72% (T+V)
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.72rem', color: '#71717a' }}>Full Tri-Modal F1</div>
-              <div className="font-mono" style={{ fontSize: '1.15rem', fontWeight: '700', color: '#a1a1aa' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Claimed Tri-Modal F1 (Unverified)</div>
+              <div className="font-mono" style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
                 87.05% (T+A+V)
               </div>
             </div>
@@ -58,14 +68,14 @@ export default function EvaluationReport({ benchmarkData }) {
 
       {/* Modality Ablation Experiments Table */}
       <div className="cinema-card" style={{ padding: '22px' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#f4f4f5', marginBottom: '14px' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '14px' }}>
           Modality Ablation Study (MELD Test Set)
         </h3>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #27272a', textAlign: 'left', color: '#71717a' }}>
+              <tr style={{ borderBottom: '1px solid var(--line)', textAlign: 'left', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '8px 10px' }}>Configuration</th>
                 <th style={{ padding: '8px 10px' }}>Channels</th>
                 <th style={{ padding: '8px 10px' }}>Weights Scheme</th>
@@ -81,18 +91,18 @@ export default function EvaluationReport({ benchmarkData }) {
                   <tr
                     key={idx}
                     style={{
-                      borderBottom: '1px solid #18181b',
-                      background: isTop ? '#18181b' : 'transparent',
+                      borderBottom: '1px solid var(--surface-2)',
+                      background: isTop ? 'var(--surface-2)' : 'transparent',
                     }}
                   >
-                    <td style={{ padding: '8px 10px', fontWeight: isTop ? '600' : '400', color: isTop ? '#ffffff' : '#d4d4d8' }}>
+                    <td style={{ padding: '8px 10px', fontWeight: isTop ? '600' : '400', color: isTop ? 'var(--text-primary)' : 'var(--text-soft)' }}>
                       {row.configuration}
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#a1a1aa' }}>{row.modality}</td>
-                    <td style={{ padding: '8px 10px', color: '#71717a', fontSize: '0.8rem' }}>{row.weights}</td>
-                    <td className="font-mono" style={{ padding: '8px 10px', textAlign: 'right', color: '#a1a1aa' }}>{row.test_acc.toFixed(2)}%</td>
-                    <td className="font-mono" style={{ padding: '8px 10px', textAlign: 'right', color: '#a1a1aa' }}>{row.macro_f1.toFixed(2)}%</td>
-                    <td className="font-mono" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', color: isTop ? '#ffffff' : '#a1a1aa' }}>
+                    <td style={{ padding: '8px 10px', color: 'var(--text-secondary)' }}>{row.modality}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{row.weights}</td>
+                    <td className="font-mono" style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--text-secondary)' }}>{row.test_acc.toFixed(2)}%</td>
+                    <td className="font-mono" style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--text-secondary)' }}>{row.macro_f1.toFixed(2)}%</td>
+                    <td className="font-mono" style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '600', color: isTop ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                       {row.weighted_f1.toFixed(2)}%
                     </td>
                   </tr>
@@ -107,7 +117,7 @@ export default function EvaluationReport({ benchmarkData }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         {/* Language-Wise Benchmark */}
         <div className="cinema-card" style={{ padding: '22px' }}>
-          <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: '#f4f4f5', marginBottom: '14px' }}>
+          <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '14px' }}>
             Multilingual Language-Wise Performance
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -115,8 +125,8 @@ export default function EvaluationReport({ benchmarkData }) {
               <div
                 key={lb.lang}
                 style={{
-                  background: '#09090b',
-                  border: '1px solid #27272a',
+                  background: 'var(--bg-inset)',
+                  border: '1px solid var(--line)',
                   borderRadius: 'var(--radius-md)',
                   padding: '10px 14px',
                   display: 'flex',
@@ -125,17 +135,17 @@ export default function EvaluationReport({ benchmarkData }) {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: '600', fontSize: '0.88rem', color: '#f4f4f5' }}>{lb.lang}</div>
-                  <div style={{ fontSize: '0.74rem', color: '#71717a' }}>
+                  <div style={{ fontWeight: '600', fontSize: '0.88rem', color: 'var(--text-primary)' }}>{lb.lang}</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                     {lb.samples} samples • Peak: {lb.topEmotion}
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <div className="font-mono" style={{ fontWeight: '600', color: '#ffffff', fontSize: '0.9rem' }}>
+                  <div className="font-mono" style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                     {lb.weightedF1}
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#71717a' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     Macro: {lb.macroF1}
                   </div>
                 </div>
@@ -146,7 +156,7 @@ export default function EvaluationReport({ benchmarkData }) {
 
         {/* 7-Class Normalized Confusion Matrix */}
         <div className="cinema-card" style={{ padding: '22px' }}>
-          <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: '#f4f4f5', marginBottom: '14px' }}>
+          <h3 style={{ fontSize: '0.92rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '14px' }}>
             Normalized Emotion Confusion Matrix
           </h3>
 
@@ -154,9 +164,9 @@ export default function EvaluationReport({ benchmarkData }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
               <thead>
                 <tr>
-                  <th style={{ padding: '6px', textAlign: 'left', color: '#71717a' }}>Pred ➔</th>
+                  <th style={{ padding: '6px', textAlign: 'left', color: 'var(--text-muted)' }}>Pred ➔</th>
                   {emotions.map((e) => (
-                    <th key={e} style={{ padding: '6px', textTransform: 'capitalize', color: '#71717a', textAlign: 'center' }}>
+                    <th key={e} style={{ padding: '6px', textTransform: 'capitalize', color: 'var(--text-muted)', textAlign: 'center' }}>
                       {e.substring(0, 3)}
                     </th>
                   ))}
@@ -165,7 +175,7 @@ export default function EvaluationReport({ benchmarkData }) {
               <tbody>
                 {confusionMatrix.map((row, rIdx) => (
                   <tr key={rIdx}>
-                    <td style={{ padding: '6px', fontWeight: '600', textTransform: 'capitalize', color: '#a1a1aa' }}>
+                    <td style={{ padding: '6px', fontWeight: '600', textTransform: 'capitalize', color: 'var(--text-secondary)' }}>
                       {emotions[rIdx].substring(0, 3)}
                     </td>
                     {row.map((val, cIdx) => {
@@ -178,7 +188,7 @@ export default function EvaluationReport({ benchmarkData }) {
                             padding: '6px',
                             textAlign: 'center',
                             background: isDiag ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-                            color: isDiag ? '#ffffff' : '#71717a',
+                            color: isDiag ? 'var(--text-primary)' : 'var(--text-muted)',
                             fontWeight: isDiag ? '600' : '400',
                             borderRadius: '2px',
                           }}

@@ -7,8 +7,8 @@ export default function MultilingualTranscript({
 }) {
   if (!clipResult || !clipResult.segments?.length) {
     return (
-      <div className="cinema-card" style={{ padding: '48px 24px', textAlign: 'center', color: '#71717a' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#f4f4f5' }}>No Transcript Available</h3>
+      <div className="cinema-card" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>No Transcript Available</h3>
         <p style={{ fontSize: '0.85rem', marginTop: '6px' }}>Analyze a video clip to generate timestamped transcripts.</p>
       </div>
     );
@@ -19,25 +19,20 @@ export default function MultilingualTranscript({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header Panel */}
-      <div className="cinema-card" style={{ padding: '24px' }}>
+      <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#f4f4f5' }}>
-                Multilingual Transcript & Dual-Model Comparison
-              </h2>
-              <span className="metric-badge">
-                IndicTrans2 Aligned
-              </span>
+              <h1 className="page-title">Transcript</h1>
             </div>
-            <p style={{ color: '#71717a', fontSize: '0.85rem', marginTop: '4px' }}>
-              Timestamped original dialogue scripts, English translation alignments, and side-by-side Approach A vs Approach B inference.
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
+              What was said and when. Click a time to jump to that moment.
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '8px' }}>
             <span className="metric-badge">
-              Lang: {scene_metadata.detected_language} ({scene_metadata.language_code?.toUpperCase()})
+              {scene_metadata.detected_language}
             </span>
           </div>
         </div>
@@ -45,7 +40,7 @@ export default function MultilingualTranscript({
 
       {/* Transcript Turns Table / Interactive Cards */}
       <div className="cinema-card" style={{ padding: '22px' }}>
-        <div style={{ fontSize: '0.74rem', color: '#71717a', textTransform: 'uppercase', fontWeight: '700', marginBottom: '14px' }}>
+        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '14px' }}>
           Clickable Timestamps (Seeks Video Player)
         </div>
 
@@ -60,8 +55,8 @@ export default function MultilingualTranscript({
               <div
                 key={idx}
                 style={{
-                  background: isActive ? '#18181b' : '#09090b',
-                  border: isActive ? '1px solid #3f3f46' : '1px solid #27272a',
+                  background: isActive ? 'var(--surface-2)' : 'var(--bg-inset)',
+                  border: isActive ? '1px solid var(--line-strong)' : '1px solid var(--line)',
                   borderRadius: 'var(--radius-md)',
                   padding: '14px 18px',
                   display: 'grid',
@@ -80,7 +75,7 @@ export default function MultilingualTranscript({
                     style={{
                       fontSize: '0.74rem',
                       padding: '4px 8px',
-                      background: '#121214',
+                      background: 'var(--surface)',
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -89,35 +84,35 @@ export default function MultilingualTranscript({
                   >
                     ▶ {seg.timestamp_label}
                   </button>
-                  <div style={{ fontSize: '0.72rem', color: '#71717a', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
                     Turn #{idx + 1} • {seg.transcript.language}
                   </div>
                 </div>
 
                 {/* Script: Original + English Translation */}
                 <div>
-                  <div className="font-indic" style={{ fontSize: '0.96rem', color: '#f4f4f5', fontWeight: '500', marginBottom: '3px' }}>
-                    "{seg.transcript.original_text}"
+                  <div className="font-indic" style={{ fontSize: '0.96rem', color: 'var(--text-primary)', fontWeight: '500', marginBottom: '3px' }}>
+                    {seg.transcript.original_text.startsWith('[') ? 'No speech in this segment.' : `“${seg.transcript.original_text}”`}
                   </div>
-                  {seg.transcript.translated_text && (
-                    <div style={{ fontSize: '0.8rem', color: '#a1a1aa' }}>
-                      EN: "{seg.transcript.translated_text}"
+                  {seg.transcript.translated_text && seg.transcript.translated_text !== seg.transcript.original_text && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      EN: “{seg.transcript.translated_text}”
                     </div>
                   )}
                 </div>
 
                 {/* Dual-Approach Comparison Badges */}
-                <div style={{ textAlign: 'right' }}>
+                {seg.modality_predictions.text.predicted_emotion !== 'unknown' && <div style={{ textAlign: 'right' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#71717a' }}>Approach A:</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Approach A:</span>
                       <span className="metric-badge" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
                         {seg.modality_predictions.text.approach_a_multilingual}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#71717a' }}>Approach B:</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Approach B:</span>
                       <span className="metric-badge" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
                         {seg.modality_predictions.text.approach_b_translated}
                       </span>
@@ -126,14 +121,14 @@ export default function MultilingualTranscript({
                     <span
                       style={{
                         fontSize: '0.68rem',
-                        color: approachesMatch ? '#f4f4f5' : '#a1a1aa',
+                        color: approachesMatch ? 'var(--text-primary)' : 'var(--text-secondary)',
                         fontWeight: '600',
                       }}
                     >
-                      {approachesMatch ? '✓ Full Concordance' : 'Nuance Shift'}
+                      {approachesMatch ? 'Approaches agree' : 'Approaches differ'}
                     </span>
                   </div>
-                </div>
+                </div>}
               </div>
             );
           })}

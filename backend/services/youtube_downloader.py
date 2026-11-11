@@ -5,6 +5,7 @@ with duration capping, format selection, progress callbacks, and local video cac
 """
 import os
 import re
+import json
 import logging
 import tempfile
 from pathlib import Path
@@ -34,7 +35,7 @@ class YouTubeClipDownloader:
             return None
         url_or_id = url_or_id.strip()
         patterns = [
-            r"(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/watch\?v=|\&v=)([A-Za-z0-9_-]{11})",
+            r"(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/|\/watch\?v=|\&v=)([A-Za-z0-9_-]{11})",
             r"^([A-Za-z0-9_-]{11})$",
         ]
         for p in patterns:
@@ -42,6 +43,14 @@ class YouTubeClipDownloader:
             if m:
                 return m.group(1)
         return None
+
+    @classmethod
+    def _read_title(cls, video_id: str) -> Optional[str]:
+        """Returns the title saved when the clip was downloaded, if any."""
+        try:
+            return json.loads((CACHE_DIR / f"{video_id}.json").read_text(encoding="utf-8")).get("title")
+        except (OSError, ValueError):
+            return None
 
     @classmethod
     def get_cached_video_path(cls, video_id: str) -> Optional[str]:
@@ -74,6 +83,7 @@ class YouTubeClipDownloader:
                 progress_callback(100.0, "Loaded from cache")
             return {
                 "video_id": video_id,
+                "title": cls._read_title(video_id),
                 "file_path": cached_file,
                 "is_cached": True,
             }
@@ -121,6 +131,11 @@ class YouTubeClipDownloader:
 
         if not os.path.exists(target_file) or os.path.getsize(target_file) < 1000:
             raise RuntimeError(f"Failed to download YouTube video: {video_id}")
+
+        try:
+            (CACHE_DIR / f"{video_id}.json").write_text(json.dumps({"title": title}), encoding="utf-8")
+        except OSError as e:
+            logger.warning(f"Could not save title for {video_id}: {e}")
 
         return {
             "video_id": video_id,

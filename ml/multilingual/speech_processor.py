@@ -13,10 +13,23 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple, Union
 
+import numpy as np
+
 from ml.multilingual.language_detector import LanguageDetector, SUPPORTED_LANGUAGES
 from ml.multilingual.translator import IndicTranslator
 
 logger = logging.getLogger(__name__)
+
+MODEL_CACHE_DIR = str(Path(__file__).resolve().parent.parent.parent / ".model_cache")
+
+# Shown when no speech is available. Text starting with "[" is never scored for emotion.
+NO_SPEECH_TEXT = "[No speech recognized]"
+
+
+def has_speech(text: Optional[str]) -> bool:
+    """True when text is real recognized speech rather than a placeholder."""
+    cleaned = (text or "").strip()
+    return bool(cleaned) and not cleaned.startswith("[")
 
 
 class MultilingualSpeechProcessor:
@@ -26,7 +39,7 @@ class MultilingualSpeechProcessor:
     """
 
     _whisper_model = None
-    _model_size = "tiny"  # Lightweight for low latency on CPU
+    _model_size = "small"  # "tiny" misses too much film dialogue
     _is_initialized = False
 
     @classmethod
@@ -41,6 +54,10 @@ class MultilingualSpeechProcessor:
                     device="cpu",
                     compute_type="int8",
                     cpu_threads=4,
+                    download_root=MODEL_CACHE_DIR,
+                    local_files_only=os.path.isdir(
+                        os.path.join(MODEL_CACHE_DIR, f"models--Systran--faster-whisper-{cls._model_size}")
+                    ),
                 )
                 logger.info(f"Loaded faster-whisper '{cls._model_size}' model for multilingual transcription.")
             except Exception as e:
@@ -48,6 +65,30 @@ class MultilingualSpeechProcessor:
                 cls._whisper_model = None
             cls._is_initialized = True
         return cls._whisper_model
+
+    @classmethod
+    def _run_whisper(cls, model, audio_path: str, language: Optional[str], task: str, vad_filter: bool):
+        """Runs one Whisper pass, dropping segments that look like hallucinated non-speech."""
+        segments_gen, info = model.transcribe(
+            audio_path,
+            language=language,
+            task=task,
+            beam_size=3,
+            vad_filter=vad_filter,
+        )
+        kept = [
+            seg for seg in segments_gen
+            if seg.text.strip() and not (seg.no_speech_prob > 0.6 and seg.avg_logprob < -1.0)
+        ]
+        return kept, info
+
+    @staticmethod
+    def _overlapping_text(start: float, end: float, translated_segments) -> str:
+        """Joins translated Whisper segments whose midpoint falls inside a time window."""
+        return " ".join(
+            seg.text.strip() for seg in translated_segments
+            if start <= (seg.start + seg.end) / 2.0 <= end
+        ).strip()
 
     @classmethod
     def transcribe(
@@ -88,47 +129,43 @@ class MultilingualSpeechProcessor:
 
             if model is not None and os.path.exists(audio_path):
                 try:
-                    # 1. Native transcription
-                    segments_gen, info = model.transcribe(
-                        audio_path,
-                        language=lang_param,
-                        task="transcribe",
-                        beam_size=3,
-                        vad_filter=True,
-                    )
+                    # 1. Native transcription. Voice activity detection can discard
+                    # speech under film music, so retry without it before giving up.
+                    whisper_segments, info = cls._run_whisper(model, audio_path, lang_param, "transcribe", True)
+                    if not whisper_segments:
+                        whisper_segments, info = cls._run_whisper(model, audio_path, lang_param, "transcribe", False)
                     detected_lang = info.language
                     lang_prob = float(info.language_probability)
 
+                    # 2. Speech translation pass for non-English audio
+                    translated_segments = []
+                    if translate_to_english and detected_lang != "en" and whisper_segments:
+                        translated_segments, _ = cls._run_whisper(model, audio_path, detected_lang, "translate", False)
+
                     segments = []
                     native_texts = []
-                    for seg in segments_gen:
+                    for seg in whisper_segments:
                         seg_text = seg.text.strip()
-                        if not seg_text:
-                            continue
                         native_texts.append(seg_text)
-
-                        # Segment entry
                         seg_data = {
                             "start": round(float(seg.start), 2),
                             "end": round(float(seg.end), 2),
                             "duration": round(float(seg.end - seg.start), 2),
                             "text": seg_text,
-                            "confidence": round(float(np.exp(seg.avg_logprob)) if hasattr(seg, "avg_logprob") else 0.90, 3),
+                            "confidence": round(float(np.exp(seg.avg_logprob)), 3),
+                            "translated_text": seg_text,
                         }
-
-                        if translate_to_english and detected_lang != "en":
-                            trans = IndicTranslator.translate_to_english(seg_text, detected_lang)
-                            seg_data["translated_text"] = trans["translated_text"]
-                        else:
-                            seg_data["translated_text"] = seg_text
-
+                        if translated_segments:
+                            seg_data["translated_text"] = (
+                                cls._overlapping_text(seg.start, seg.end, translated_segments) or seg_text
+                            )
                         segments.append(seg_data)
 
                     full_native_transcript = " ".join(native_texts).strip()
 
-                    # Fallback if audio was silent
+                    # No speech is reported as such, never invented
                     if not full_native_transcript:
-                        full_native_transcript = "[Speech activity detected without intelligible linguistic tokens]"
+                        full_native_transcript = NO_SPEECH_TEXT
                         segments = [{
                             "start": 0.0,
                             "end": round(info.duration, 2) if hasattr(info, "duration") else 1.0,
@@ -143,16 +180,18 @@ class MultilingualSpeechProcessor:
                         final_lang = language_override.lower()
                         is_override = True
                         conf = 1.0
+                        supported = True
                     else:
-                        final_lang = detected_lang if detected_lang in SUPPORTED_LANGUAGES else "en"
+                        supported = detected_lang in SUPPORTED_LANGUAGES
+                        final_lang = detected_lang if supported else "en"
                         is_override = False
                         conf = lang_prob
 
                     lang_meta = SUPPORTED_LANGUAGES.get(final_lang, SUPPORTED_LANGUAGES["en"])
 
                     # Build full translation
-                    if translate_to_english and final_lang != "en":
-                        full_trans = IndicTranslator.translate_to_english(full_native_transcript, final_lang)["translated_text"]
+                    if translated_segments:
+                        full_trans = " ".join(seg.text.strip() for seg in translated_segments)
                     else:
                         full_trans = full_native_transcript
 
@@ -160,22 +199,22 @@ class MultilingualSpeechProcessor:
                         "status": "success",
                         "detected_language": {
                             "language_code": final_lang,
-                            "language_name": lang_meta["name"],
-                            "native_name": lang_meta["native_name"],
+                            "language_name": lang_meta["name"] if supported else f"Other ({detected_lang})",
+                            "native_name": lang_meta["native_name"] if supported else detected_lang,
                             "confidence": round(conf, 4),
                             "is_override": is_override,
+                            "supported": supported,
                         },
                         "original_transcript": full_native_transcript,
                         "translated_transcript": full_trans,
-                        "is_translated": (final_lang != "en" and translate_to_english),
+                        "is_translated": bool(translated_segments),
                         "total_duration_sec": round(float(info.duration), 2) if hasattr(info, "duration") else 0.0,
                         "segments": segments,
                     }
 
                 except Exception as ex:
-                    logger.warning(f"Whisper inference failed on {audio_path}: {ex}. Using acoustic fallback.")
+                    logger.warning(f"Whisper inference failed on {audio_path}: {ex}. Reporting no transcript.")
 
-            # Synthetic / Fallback speech transcription
             return cls._fallback_transcription(audio_path, language_override, translate_to_english)
 
         finally:
@@ -192,49 +231,33 @@ class MultilingualSpeechProcessor:
         language_override: Optional[str],
         translate_to_english: bool,
     ) -> Dict[str, Any]:
-        """Acoustic-based fallback when model is uninitialized or in test mock mode."""
+        """Used when speech could not be processed. Reports that no transcript exists."""
         lang_code = (language_override or "en").lower()
         if lang_code not in SUPPORTED_LANGUAGES:
             lang_code = "en"
-
         meta = SUPPORTED_LANGUAGES[lang_code]
-        
-        # Sample conversational templates for testing
-        templates = {
-            "hi": "नमस्ते, मैं आज बहुत खुश हूँ।",
-            "ml": "നമസ്കാരം, എനിക്ക് വളരെ സന്തോഷമുണ്ട്.",
-            "ta": "வணக்கம், நான் ரொம்ப சந்தோஷமா இருக்கேன்.",
-            "en": "Hello, I am feeling very happy today.",
-        }
-        transcript = templates.get(lang_code, templates["en"])
-
-        if translate_to_english and lang_code != "en":
-            translated = IndicTranslator.translate_to_english(transcript, lang_code)["translated_text"]
-        else:
-            translated = transcript
 
         return {
-            "status": "fallback",
+            "status": "no_transcript",
             "detected_language": {
                 "language_code": lang_code,
                 "language_name": meta["name"],
                 "native_name": meta["native_name"],
-                "confidence": 0.85,
+                "confidence": 0.0,
                 "is_override": bool(language_override),
             },
-            "original_transcript": transcript,
-            "translated_transcript": translated,
-            "is_translated": (lang_code != "en" and translate_to_english),
-            "total_duration_sec": 2.5,
+            "original_transcript": NO_SPEECH_TEXT,
+            "translated_transcript": NO_SPEECH_TEXT,
+            "is_translated": False,
+            "total_duration_sec": 0.0,
             "segments": [
                 {
                     "start": 0.0,
-                    "end": 2.5,
-                    "duration": 2.5,
-                    "text": transcript,
-                    "translated_text": translated,
-                    "confidence": 0.88,
+                    "end": 0.0,
+                    "duration": 0.0,
+                    "text": NO_SPEECH_TEXT,
+                    "translated_text": NO_SPEECH_TEXT,
+                    "confidence": 0.0,
                 }
             ],
         }
-
