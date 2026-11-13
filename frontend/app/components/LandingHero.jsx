@@ -292,7 +292,7 @@ export default function LandingHero({ onNavigate, history = [], scenes = [], onO
 
         <div className="billboard-inner">
           {latest ? (
-            <div>
+            <div key={`latest-${latest.key}`}>
               <span className="eyebrow billboard-rise">Last analyzed</span>
               <h1 className="billboard-title">{latest.title}</h1>
               <div className="billboard-meta billboard-rise">
@@ -320,7 +320,7 @@ export default function LandingHero({ onNavigate, history = [], scenes = [], onO
               </div>
             </div>
           ) : (
-            <div>
+            <div key="intro">
               <span className="eyebrow billboard-rise">Explainable Multimodal Emotion Recognition</span>
               <h1 className="billboard-title">
                 The words said fine. <em>The face didn’t.</em>

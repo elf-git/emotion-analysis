@@ -130,7 +130,7 @@ export default function SceneDashboard({
           <div className="eyebrow" style={{ marginBottom: '6px', overflowWrap: 'anywhere' }}>
             {scene_metadata.filename || 'Scene'}
           </div>
-          <div className="dominant-word" style={{ color: emotionColor(dominant) === 'var(--text-faint)' ? 'var(--text-primary)' : emotionColor(dominant) }}>
+          <div key={`${scene_metadata.filename}-${dominant}`} className="dominant-word" style={{ color: emotionColor(dominant) === 'var(--text-faint)' ? 'var(--text-primary)' : emotionColor(dominant) }}>
             {dominant.charAt(0).toUpperCase() + dominant.slice(1)}
           </div>
         </div>
